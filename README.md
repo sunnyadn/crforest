@@ -1,9 +1,9 @@
 # crforest
 
 Competing-risks random survival forests for Python. 5–7× faster than
-randomForestSRC, scales to n = 10⁶, scikit-learn-compatible. Designed
-to replace the Python → R workflow split that applied researchers
-currently endure for competing-risks survival analysis.
+randomForestSRC, scales to n = 10⁶ in minutes, scikit-learn-compatible.
+Designed to replace the Python → R workflow split that applied
+researchers currently endure for competing-risks survival analysis.
 
 > **Status: pre-alpha (v0.1).** API and internals may change before v1.0.
 
