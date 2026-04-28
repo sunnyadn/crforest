@@ -8,50 +8,51 @@ currently endure for competing-risks survival analysis.
 
 ## Highlights
 
-- **The only competing-risks Random Survival Forest in Python.**
-  Three-state survival fit and predict, Aalen-Johansen CIF, Nelson-Aalen
-  CHF, cause-specific Harrell + Uno IPCW C-indices — out of the box, no
-  event collapse, fits cleanly to n = 1 000 000 on commodity CPU.
-  scikit-survival has a single-event `RandomSurvivalForest`; lifelines /
-  pycox have estimators but no forest; nothing else covers CR + tree
-  ensemble + scale.
-- **5–7× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**,
-  the gold-standard R reference, at matched accuracy on real clinical
-  workloads (real CHF cohort, n ≈ 75k, p = 58, ntree = 100, same machine;
-  HF Harrell C-index tied at 0.864). Sub-linear wall scaling to n = 1M (122 s).
-- **Order-of-magnitude faster than [scikit-survival](https://scikit-survival.readthedocs.io/)
-  at sksurv's best config**, gap widening with n (5.7× at n = 5 000, 15× at
-  n = 10 000, 64× at n = 25 000, 205× at n = 50 000). crforest also keeps
-  the CHF + CIF outputs that sksurv has to disable to fit at scale: sksurv
-  either OOMs (`low_memory=False`, the only mode that exposes
-  `predict_cumulative_hazard_function`) or produces risk scores only
-  (`low_memory=True`). Numbers in [Bench](#bench).
+- **The only competing-risks Random Survival Forest in Python.** Three-state
+  fit and predict, Aalen-Johansen CIF, Nelson-Aalen CHF, cause-specific
+  Harrell + Uno IPCW C-indices, OOB Breiman permutation VIMP — out of the box.
+- **5–7× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
+  at matched accuracy on real clinical workloads (real CHF cohort, n ≈ 75k,
+  p = 58, ntree = 100, same machine; HF Harrell C-index tied at 0.864).
+  Sub-linear wall scaling to n = 1M (122 s).
+- **Order-of-magnitude faster than [scikit-survival](https://scikit-survival.readthedocs.io/)**
+  at sksurv's best config (5.7× at n = 5k, 205× at n = 50k), without
+  giving up CIF/CHF outputs that sksurv has to disable to fit at scale.
 - **Bit-identical to randomForestSRC** with `equivalence="rfsrc"` —
-  reproduces the per-tree mtry/nsplit RNG stream; pairs with rfSRC
-  `bootstrap=by.user` fits to reach the Z-cell numerical floor (~0.01–0.07
-  cross_p95_cif on standard CR datasets, ntree = 100). Useful for paper
-  reviews, sensitivity checks, and migrations.
-- **Drop-in for Python pipelines.** `BaseEstimator` subclass, pickleable;
-  `fit` / `predict_cif` / `predict_chf` / `predict_risk` / `score` /
-  `compute_importance` follow scikit-learn conventions.
-- **Reproducible permutation VIMP.** OOB Breiman or held-out, scored with
-  Uno IPCW C-index — independent re-implementation of the textbook formula,
-  bit-equivalent across `n_jobs`.
-- **Two splitrules.** `logrankCR` (composite competing-risks log-rank,
-  default) and `logrank` (cause-specific).
-- **GPU preview.** Optional CUDA backend (`device="cuda"` +
-  `crforest[gpu]`); faster only at low feature count today, full rewrite
-  scheduled for v1.1.
+  reproduces the per-tree mtry/nsplit RNG stream for paper-grade
+  reproducibility, sensitivity checks, and rfSRC-baseline migrations.
+
+## crforest vs alternatives
+
+|                                          | crforest                       | randomForestSRC                    | scikit-survival          |
+|------------------------------------------|:------------------------------:|:----------------------------------:|:------------------------:|
+| Language                                 | Python                         | R                                  | Python                   |
+| Native competing risks                   | ✓                              | ✓                                  | ✗ (single-event only)    |
+| Aalen–Johansen CIF output                | ✓                              | ✓                                  | n/a                      |
+| Cumulative hazard at scale               | ✓                              | ✓                                  | ✗¹                       |
+| OOB permutation VIMP                     | ✓                              | ✓                                  | ✗                        |
+| Bit-identical reproducibility mode       | ✓ (`equivalence="rfsrc"`)      | —                                  | n/a                      |
+| Scales to n = 10⁶                        | ✓                              | OOM at n ≳ 500 000                 | ✗¹ / OOM²                |
+| Default parallelism                      | ✓ (`n_jobs=-1`)                | OpenMP (rebuild required on macOS) | ✓                        |
+| GPU preview                              | ✓ (CUDA 12)                    | ✗                                  | ✗                        |
+
+¹ sksurv `RandomSurvivalForest(low_memory=True)` is the only mode that
+scales beyond ~10k samples, but it disables `predict_cumulative_hazard_function`
+and `predict_survival_function` (raises `NotImplementedError`).
+² sksurv `low_memory=False` exposes CHF / survival outputs but stores per-leaf
+full CHF arrays; peak RSS reaches 16.8 GB at n = 5k on synthetic, OOMs
+(> 21.5 GB) at n = 10k on a 24 GB host.
 
 ## Install
 
 ```bash
-pip install crforest          # core (CPU)
-pip install "crforest[gpu]"   # + cupy / CUDA 12 preview
+pip install crforest          # or:  uv add crforest
+pip install "crforest[gpu]"   # or:  uv add 'crforest[gpu]'
 ```
 
 Requires Python ≥ 3.10. Core dependencies: numpy, scipy, pandas, joblib,
-numba, scikit-learn.
+numba, scikit-learn. GPU extra adds cupy + CUDA 12 runtime libs (preview;
+faster only at low feature count today, full rewrite scheduled for v1.1).
 
 ## Quickstart
 
@@ -87,28 +88,7 @@ print(vimp.sort_values("composite_vimp", ascending=False).head())
 See [docs/quickstart.md](docs/quickstart.md) for the full walkthrough — data
 format, prediction shapes, cross-validation, GPU, and migrating from rfSRC.
 
-## Why crforest?
-
-The Python ecosystem currently leaves competing-risks survival users with
-no good option:
-
-- **[scikit-survival](https://scikit-survival.readthedocs.io/)** does not
-  natively support competing risks (single-event only). Its
-  `RandomSurvivalForest` has two storage modes, both losing: `low_memory=False`
-  (the only mode that supports `predict_cumulative_hazard_function` /
-  `predict_survival_function`) stores per-leaf full CHF arrays and OOMs at
-  moderate n; `low_memory=True` fits at scale but only `predict()` works —
-  no CHF, no survival function.
-- **[randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
-  is correct and feature-complete but slow, requires R, and is awkward
-  inside Python pipelines (rpy2 glue, OpenMP rebuild on macOS, GC pauses).
-  A 5-fold CV on a moderate cohort takes overnight.
-
-crforest is the first Python package to fit all three jobs at once: native
-competing risks, fits and outputs CHF/CIF at scale (n ≥ 10⁶ on commodity
-CPU), and validated bit-identical to rfSRC for paper-grade reproducibility.
-
-### Bench
+## Benchmarks
 
 **vs randomForestSRC, paired same machine** — i7-13700K, 24 threads, rfSRC
 built with full OpenMP; real CHF cohort, HF / death competing risks;
@@ -185,6 +165,9 @@ proportional to the cohort: n = 100k, ntree = 100 pickles to ~3.6 GB.
 After `.fit()`: `forest.n_causes_`, `forest.unique_times_`, `forest.time_grid_`,
 `forest.n_features_in_`, `forest.feature_importances_`, `forest.trees_`,
 `forest.inbag_` (when `equivalence="rfsrc"`).
+
+Two splitrules are available: `logrankCR` (composite competing-risks
+log-rank, default) and `logrank` (cause-specific).
 
 ## Documentation
 
