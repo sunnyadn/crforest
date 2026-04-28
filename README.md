@@ -35,7 +35,7 @@ researchers currently endure for competing-risks survival analysis.
 | OOB permutation VIMP                     | ✓                              | ✓                                  | ✗                        |
 | Bit-identical reproducibility mode       | ✓ (`equivalence="rfsrc"`)      | —                                  | n/a                      |
 | Scales to n = 10⁶                        | ✓                              | OOM at n ≳ 500 000                 | ✗¹ / OOM²                |
-| Default parallelism                      | ✓ (`n_jobs=-1`)                | OpenMP (rebuild required on macOS) | ✓                        |
+| Default parallelism                      | ✓ (`n_jobs=-1`)                | OpenMP (build-dependent; macOS Apple clang lacks it) | ✓        |
 | GPU preview                              | ✓ (CUDA 12)                    | ✗                                  | ✗                        |
 
 ¹ sksurv `RandomSurvivalForest(low_memory=True)` is the only mode that

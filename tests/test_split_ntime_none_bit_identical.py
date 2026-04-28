@@ -15,6 +15,7 @@ baseline. History:
   - Plan 1.5 (predict_chf lazy):  ``cfb10138..`` / 14801489 bytes (+5.7 MB, raw uint32 counts persisted on FlatTree for lazy Nelson-Aalen)
   - Plan 2 Task 6 (device arg):   ``08cb8cd4..`` / 14801532 bytes (+43, ``device`` ctor attr + ``_effective_device_`` post-fit)
   - Plan 2 Task 9d.5 (pin cpu):   ``e7930718..`` / 14801527 bytes (-5, ctor pinned ``device='cpu'`` so the test is hardware-independent — ``device='auto'`` resolves to cuda when cupy is installed and produces a different pickle by design)
+  - Surv y_train_oob field order: ``70efbe29..`` / 14801527 bytes (0 byte delta, struct layout swap — ``_y_train_oob_`` field order changed from ``[("time", float64), ("event", int64)]`` to sksurv-canonical ``[("event", int64), ("time", float64)]`` after the ``Surv.from_arrays`` simplification)
 
 Future changes that affect ``split_ntime=None`` tree-building behavior
 will drift this digest and flag for investigation.
@@ -29,7 +30,7 @@ import numpy as np
 
 from crforest import CompetingRiskForest
 
-ANCHOR_SHA256 = "e79307189854b06be8058fd530a5490181d3dee41ba620f7affa4860f7d38109"
+ANCHOR_SHA256 = "70efbe29711e53b35137f5a9ee1f7dd7e34719ebf3bffde0c75d2bd85d536110"
 ANCHOR_PICKLE_BYTES = 14801527
 
 

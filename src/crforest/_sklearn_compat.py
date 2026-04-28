@@ -59,7 +59,7 @@ class Surv:
         Returns
         -------
         y : structured ndarray, shape (n,)
-            Fields ``(name_event, name_time)``, dtypes ``int8`` and
+            Fields ``(name_event, name_time)``, dtypes ``int64`` and
             ``float64``.
         """
         event_arr = np.asarray(event)
@@ -70,22 +70,15 @@ class Surv:
             raise ValueError(
                 f"event and time must be the same length; got {len(event_arr)} and {len(time_arr)}"
             )
-        # int8 is enough for typical CR event indicators (≤ 127 causes).
-        # Promote if user has bigger ints.
-        event_dtype: type[np.integer]
-        if np.issubdtype(event_arr.dtype, np.bool_):
-            event_dtype = np.int8
-            event_arr = event_arr.astype(np.int8)
-        elif np.issubdtype(event_arr.dtype, np.integer):
-            event_dtype = np.int8 if event_arr.max(initial=0) < 128 else event_arr.dtype.type
-            event_arr = event_arr.astype(event_dtype)
-        else:
+        if not (
+            np.issubdtype(event_arr.dtype, np.integer) or np.issubdtype(event_arr.dtype, np.bool_)
+        ):
             raise TypeError(f"event must be integer-typed (or bool); got dtype {event_arr.dtype}")
         out = np.zeros(
             len(time_arr),
-            dtype=[(name_event, event_dtype), (name_time, np.float64)],
+            dtype=[(name_event, np.int64), (name_time, np.float64)],
         )
-        out[name_event] = event_arr
+        out[name_event] = event_arr  # numpy auto-casts bool/int to int64
         out[name_time] = time_arr
         return out
 

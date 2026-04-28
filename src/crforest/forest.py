@@ -15,7 +15,11 @@ from crforest._binning import apply_bins, fit_bin_edges
 from crforest._gpu_detect import detect_cuda
 from crforest._hist_tree import build_tree_hist, predict_tree_hist, predict_tree_hist_chf
 from crforest._importance import _compute_importance_impl
-from crforest._sklearn_compat import unpack_structured_y
+from crforest._sklearn_compat import (
+    Surv,
+    is_structured_survival_y,
+    unpack_structured_y,
+)
 from crforest._time_grid import coarsen_time_grid, fit_time_grid
 from crforest._tree import build_tree, predict_tree, predict_tree_chf
 from crforest._validation import check_inputs
@@ -232,10 +236,7 @@ class CompetingRiskForest(BaseEstimator):
             self._fit_default(X, time, event, max_features)
         if self.bootstrap:
             self._X_train_oob_ = X
-            y_struct = np.zeros(len(time), dtype=[("time", np.float64), ("event", np.int64)])
-            y_struct["time"] = time
-            y_struct["event"] = event
-            self._y_train_oob_ = y_struct
+            self._y_train_oob_ = Surv.from_arrays(event=event, time=time)
         else:
             self._X_train_oob_ = None
             self._y_train_oob_ = None
@@ -759,11 +760,7 @@ class CompetingRiskForest(BaseEstimator):
         if y_eval is None:
             raise ValueError("y_eval is None but X_eval is not; pass both or neither.")
         y_arr = np.asarray(y_eval)
-        if (
-            y_arr.dtype.names is None
-            or "time" not in y_arr.dtype.names
-            or "event" not in y_arr.dtype.names
-        ):
+        if not is_structured_survival_y(y_arr):
             raise TypeError(
                 "y_eval must be a structured array with 'time' and 'event' fields; "
                 "see CompetingRiskForest.compute_importance docstring."
