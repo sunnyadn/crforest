@@ -14,8 +14,9 @@ researchers currently endure for competing-risks survival analysis.
   Harrell + Uno IPCW C-indices, OOB Breiman permutation VIMP — out of the box.
 - **5–7× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
   at matched accuracy on real clinical workloads (real CHF cohort, n ≈ 75k,
-  p = 58, ntree = 100, same machine; HF Harrell C-index tied at 0.864).
-  Sub-linear wall scaling to n = 1M (122 s).
+  p = 58, ntree = 100, same machine, rfSRC built with full OpenMP at 24
+  threads; HF Harrell C-index tied at 0.864). Sub-linear wall scaling to
+  n = 1M (122 s).
 - **Order-of-magnitude faster than [scikit-survival](https://scikit-survival.readthedocs.io/)**
   at sksurv's best config (5.7× at n = 5k, 205× at n = 50k), without
   giving up CIF/CHF outputs that sksurv has to disable to fit at scale.
@@ -89,6 +90,30 @@ print(vimp.sort_values("composite_vimp", ascending=False).head())
 See [docs/quickstart.md](docs/quickstart.md) for the full walkthrough — data
 format, prediction shapes, cross-validation, GPU, and migrating from rfSRC.
 
+## scikit-learn drop-in
+
+`CompetingRiskForest` is a real sklearn estimator: `BaseEstimator` subclass,
+`clone()`-friendly, picklable, and `fit(X, y)` / `score(X, y)` accept the
+scikit-survival-style structured `y` so `cross_val_score`, `KFold`, and
+`Pipeline` work without a wrapper.
+
+```python
+from sklearn.model_selection import KFold, cross_val_score
+from crforest import CompetingRiskForest, Surv
+
+y = Surv.from_arrays(event=event, time=time)
+forest = CompetingRiskForest(n_estimators=100, random_state=42, n_jobs=-1)
+
+cv = KFold(n_splits=5, shuffle=True, random_state=42)
+scores = cross_val_score(forest, X, y, cv=cv, n_jobs=-1)
+print(f"5-fold C-index, cause 1: {scores.mean():.3f} ± {scores.std():.3f}")
+```
+
+The legacy three-argument form `forest.fit(X, time, event)` keeps working,
+and `predict(X)` is an alias for `predict_risk(X, cause=1)` so the
+estimator slots straight into `Pipeline` / `cross_val_predict`. For
+cause-k risk or for CIF / CHF curves use the explicit methods.
+
 ## Benchmarks
 
 **vs randomForestSRC, paired same machine** — i7-13700K, 24 threads, rfSRC
@@ -155,12 +180,14 @@ proportional to the cohort: n = 100k, ntree = 100 pickles to ~3.6 GB.
 | | |
 |---|---|
 | `CompetingRiskForest(...)` | the estimator; full parameter list in [`forest.py`](src/crforest/forest.py) |
-| `.fit(X, time, event)` | `time` is `(n,)` float; `event` is `(n,)` int (`0` = censored, `1..K` = cause) |
+| `.fit(X, time, event)` or `.fit(X, y)` | legacy form takes `time` `(n,)` float and `event` `(n,)` int (`0`=censored, `1..K`=cause); sklearn form takes structured `y` from `Surv.from_arrays` |
+| `.predict(X)` | sklearn alias for `predict_risk(X, cause=1)`; shape `(n_samples,)` |
 | `.predict_cif(X, times=None)` | shape `(n_samples, n_causes, n_times)` |
 | `.predict_chf(X, times=None)` | shape `(n_samples, n_causes, n_times)` |
 | `.predict_risk(X, cause=1, kind="integrated_chf")` | shape `(n_samples,)` |
-| `.score(X, time, event, cause=1)` | Wolbers cause-specific concordance |
+| `.score(X, time, event, cause=1)` or `.score(X, y, cause=1)` | Wolbers cause-specific concordance |
 | `.compute_importance(...)` | per-cause + composite permutation VIMP DataFrame |
+| `Surv.from_arrays(event, time)` | structured `y` for sklearn `fit(X, y)` / `cross_val_score` |
 | `concordance_index_cr(event, time, estimate, cause=1)` | top-level metric for any risk score |
 
 After `.fit()`: `forest.n_causes_`, `forest.unique_times_`, `forest.time_grid_`,

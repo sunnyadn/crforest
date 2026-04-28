@@ -17,6 +17,12 @@ Initial public release. Pre-alpha; API may change before 1.0.
   and two split rules (`splitrule="logrankCR"` composite competing-risks
   log-rank with Lau-inclusive at-risk, and `splitrule="logrank"`
   cause-specific log-rank with optional `cause_weights`).
+- **sklearn drop-in surface** — `fit(X, y)` and `score(X, y)` accept the
+  scikit-survival-style structured ``y`` (build via ``Surv.from_arrays(event,
+  time)``); the legacy ``fit(X, time, event)`` form keeps working.
+  ``predict(X)`` aliases ``predict_risk(X, cause=1)`` so the estimator
+  drops into ``cross_val_score`` / ``KFold`` / ``Pipeline`` without a
+  wrapper.
 - **Predict API** — `predict_cif`, `predict_chf`, `predict_risk`, `score`.
   Cumulative incidence (Aalen-Johansen) and cumulative hazard
   (Nelson-Aalen) tables are materialised lazily on first predict from

@@ -15,6 +15,7 @@ from crforest._binning import apply_bins, fit_bin_edges
 from crforest._gpu_detect import detect_cuda
 from crforest._hist_tree import build_tree_hist, predict_tree_hist, predict_tree_hist_chf
 from crforest._importance import _compute_importance_impl
+from crforest._sklearn_compat import unpack_structured_y
 from crforest._time_grid import coarsen_time_grid, fit_time_grid
 from crforest._tree import build_tree, predict_tree, predict_tree_chf
 from crforest._validation import check_inputs
@@ -187,7 +188,13 @@ class CompetingRiskForest(BaseEstimator):
         self.equivalence = equivalence
         self.device = device
 
-    def fit(self, X, time, event):
+    def fit(self, X, time, event=None):
+        # Dual signature for sklearn drop-in compatibility:
+        # - fit(X, time, event): legacy three-positional, two 1-D arrays
+        # - fit(X, y) where y is structured with 'time' and 'event' fields:
+        #   sklearn-friendly form, used by cross_val_score / Pipeline / etc.
+        if event is None:
+            time, event = unpack_structured_y(time)
         if self.mode not in ("default", "reference"):
             raise ValueError(f"mode must be 'default' or 'reference'; got {self.mode!r}")
         if self.splitrule not in ("logrankCR", "logrank"):
@@ -635,11 +642,29 @@ class CompetingRiskForest(BaseEstimator):
         c = cause - 1
         return self._ensemble_mean(X_input, predict_fn, lambda arr: arr[:, c, :].sum(axis=-1))
 
-    def score(self, X, time, event, cause: int = 1, kind: str = "integrated_chf") -> float:
-        """Cause-specific Harrell C-index. ``kind`` forwards to predict_risk."""
+    def score(self, X, time, event=None, cause: int = 1, kind: str = "integrated_chf") -> float:
+        """Cause-specific Harrell C-index. ``kind`` forwards to predict_risk.
+
+        Accepts either the three-positional legacy form ``score(X, time, event)``
+        or the sklearn-friendly ``score(X, y)`` where ``y`` is a structured
+        array with ``time`` and ``event`` fields (see :class:`crforest.Surv`).
+        """
         check_is_fitted(self, "trees_")
+        if event is None:
+            time, event = unpack_structured_y(time)
         risk = self.predict_risk(X, cause=cause, kind=kind)
         return concordance_index_cr(event, time, risk, cause=cause)
+
+    def predict(self, X) -> np.ndarray:
+        """sklearn-style alias for ``predict_risk(X, cause=1)``.
+
+        Returned shape ``(n_samples,)``. The cause-1 default lets crforest
+        slot into ``Pipeline`` / ``cross_val_predict`` without a wrapper;
+        for cause-k risk or for CIF / CHF curves, call
+        :meth:`predict_risk` / :meth:`predict_cif` / :meth:`predict_chf`
+        directly.
+        """
+        return self.predict_risk(X, cause=1)
 
     def _resolve_max_features(self, n_features: int) -> int | None:
         mf = self.max_features
