@@ -1,0 +1,40 @@
+--- a/src/splitUtil.c
++++ b/src/splitUtil.c
+@@ -13,6 +13,7 @@
+ #include "factorOps.h"
+ #include "nrutil.h"
+ #include "error.h"
++extern void rfsrc_trace_event(const char *kind, uint tree, int a, int b, double c);
+ char getPreSplitResultGeneric (uint      treeID,
+                                Node     *parent,
+                                char      multImpFlag,
+@@ -290,11 +291,12 @@
+     if (*covariate != 0) {
+       updateCDFNew(treeID, distributionObj);
+       xVarFound = TRUE;
+-        if (RF_xType[*covariate] == 'C') {
+-          *factorFlag = TRUE;
+-        }
+-    }  
+-  }  
++      rfsrc_trace_event("mtry_pick", treeID, (int)(*covariateCount), (int)(*covariate), 0.0);
++      if (RF_xType[*covariate] == 'C') {
++        *factorFlag = TRUE;
++      }
++    }
++  }
+   return xVarFound;
+ }
+ uint stackAndConstructSplitVectorGenericPhase1 (uint     treeID,
+@@ -531,9 +533,11 @@
+         for (j = 1; j <= sworVectorSize; j++) {
+           sworVector[j] = j;
+         }
++        rfsrc_trace_event("nsplit_start", treeID, (int)vectorSize, (int)(splitLength - 1), 0.0);
+         for (j = 1; j < splitLength; j++) {
+           sworIndex = (uint) ceil(ran1B(treeID) * (sworVectorSize * 1.0));
+           ((double*) (*splitVectorPtr))[j]  = splitVector[sworVector[sworIndex]];
++          rfsrc_trace_event("nsplit_pick", treeID, (int)sworIndex, (int)(sworVector[sworIndex]), 0.0);
+           sworVector[sworIndex] = sworVector[sworVectorSize];
+           sworVectorSize --;
+         }

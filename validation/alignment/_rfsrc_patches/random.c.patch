@@ -1,0 +1,41 @@
+--- a/src/random.c
++++ b/src/random.c
+@@ -119,9 +119,37 @@
+ float randomChainParallel(uint b) {
+   return  ran1_generic(& ran1A_iy[b], ran1A_iv[b], & seed1AValue[b]);
+ }
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++static FILE *rfsrc_trace_fp = NULL;
++static char  rfsrc_trace_path_seen[1024] = "";
++static void rfsrc_trace_maybe_open(void) {
++  const char *path = getenv("RFSRC_TRACE");
++  const char *effective = (path && path[0]) ? path : "";
++  if (strcmp(rfsrc_trace_path_seen, effective) == 0) return;
++  if (rfsrc_trace_fp) { fclose(rfsrc_trace_fp); rfsrc_trace_fp = NULL; }
++  strncpy(rfsrc_trace_path_seen, effective, sizeof(rfsrc_trace_path_seen) - 1);
++  rfsrc_trace_path_seen[sizeof(rfsrc_trace_path_seen) - 1] = '\0';
++  if (effective[0]) rfsrc_trace_fp = fopen(effective, "w");
++}
++static void rfsrc_trace_ran1b(uint b, float v) {
++  rfsrc_trace_maybe_open();
++  if (rfsrc_trace_fp) fprintf(rfsrc_trace_fp, "ran1B tree=%u val=%.10f\n", b, v);
++}
++static void rfsrc_trace_msg(const char *kind, uint tree, int a, int b, double c) {
++  rfsrc_trace_maybe_open();
++  if (rfsrc_trace_fp) fprintf(rfsrc_trace_fp, "%s tree=%u a=%d b=%d c=%.6f\n", kind, tree, a, b, c);
++}
+ float randomUChainParallel(uint b) {
+-  return  ran1_generic(& ran1B_iy[b], ran1B_iv[b], & seed1BValue[b]);
++  float v = ran1_generic(& ran1B_iy[b], ran1B_iv[b], & seed1BValue[b]);
++  rfsrc_trace_ran1b(b, v);
++  return v;
+ }
++/* Expose tracing helpers to other translation units. */
++void rfsrc_trace_event(const char *kind, uint tree, int a, int b, double c) {
++  rfsrc_trace_msg(kind, tree, a, b, c);
++}
+ float randomUChainParallelVimp(uint b) {
+   return  ran1_generic(& ran1C_iy[b], ran1C_iv[b], & seed1CValue[b]);
+ }

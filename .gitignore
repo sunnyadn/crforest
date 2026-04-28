@@ -1,0 +1,81 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.hypothesis/
+
+# Linters / type checkers
+.ruff_cache/
+.mypy_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code session-local settings
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# uv
+.python-version
+uv.lock
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Internal planning (not for public repo)
+docs/internal/
+docs/superpowers/
+
+# Git worktrees
+.worktrees/
+
+# P1b validation run outputs (re-generated per run)
+validation/reports/
+# Intermediate CSVs from validation/gen_datasets.R (parquet is the source of truth)
+validation/data/*.csv
+
+# ζ head-to-head benchmark artifacts (spike code tracked, outputs regenerated)
+validation/spikes/zeta/data/
+validation/spikes/zeta/timings/
+validation/spikes/zeta/reports/
+validation/spikes/zeta/*.log
+
+# η perf-ceiling spike artifacts (spike code tracked, outputs regenerated)
+validation/spikes/eta/data/
+validation/spikes/eta/timings/
+validation/spikes/eta/reports/
+validation/spikes/eta/logs/
+
+# θ kernel-rewrite + GPU POC spike artifacts
+validation/spikes/theta/logs/
+validation/spikes/theta/reports/
+
+# equivalence-gate cache (maintainer-local)
+validation/alignment/_cache/

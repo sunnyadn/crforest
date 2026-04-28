@@ -1,0 +1,24 @@
+--- a/src/importancePerm.c
++++ b/src/importancePerm.c
+@@ -10,6 +10,8 @@
+ #include "rfsrcUtil.h"
+ #include "nodeOps.h"
+ #include "nrutil.h"
++/* Trace helper exposed by random.c (RFSRC_TRACE patches). */
++extern void rfsrc_trace_event(const char *kind, uint tree, int a, int b, double c);
+ void getPermuteMembership (char       mode,
+                            uint       treeID,
+                            Terminal **vimpMembership,
+@@ -69,6 +71,12 @@
+     uint targetCov = p;
+     shadowVIMP[targetCov] = dvector(1, obsSize);
+     permute(4, treeID, membershipSize, permuteVIMP);
++    for (uint _vt_i = 1; _vt_i <= membershipSize; _vt_i++) {
++      rfsrc_trace_event("vimp_perm", treeID,
++                        (int)p,
++                        (int)membershipIndex[_vt_i],
++                        (double)membershipIndex[permuteVIMP[_vt_i]]);
++    }
+     for (uint i = 1; i <= membershipSize; i++) {
+       uint ii = membershipIndex[i];
+       shadowVIMP[targetCov][ii] = predictorPtr[targetCov][membershipIndex[permuteVIMP[i]]];

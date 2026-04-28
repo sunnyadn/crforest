@@ -1,0 +1,82 @@
+--- a/src/splitSurv.c
++++ b/src/splitSurv.c
+@@ -13,6 +13,7 @@
+ #include "splitUtilSurv.h"
+ #include "nrutil.h"
+ #include "error.h"
++extern void rfsrc_trace_event(const char *kind, uint tree, int a, int b, double c);
+ char logRankNCR (uint       treeID,
+                  Node      *parent,
+                  SplitInfoMax *splitInfoMax,
+@@ -343,7 +344,8 @@
+             if (factorFlag == FALSE) {
+               priorMembrIter = currentMembrIter - 1;
+             }
+-          }  
++          }
++          rfsrc_trace_event("feat_stat_CR", treeID, (int)covariate, (int)indexMax, deltaMax);
+           updateMaximumSplit(treeID,
+                              parent,
+                              deltaMax,
+@@ -355,13 +357,13 @@
+                              & localSplitIndicator,
+                              splitVectorPtr,
+                              splitInfoMax);
+-        }  
++        }
+         else {
+         }
+         unstackSplitVector(treeID,
+                               parent,
+                               splitLength,
+-                              factorFlag,            
++                              factorFlag,
+                               splitVectorSize,
+                               mwcpSizeAbsolute,
+                               deterministicSplitFlag,
+@@ -461,6 +463,7 @@
+     uint *repMembrIndx = parent -> repMembrIndx;
+     uint  nonMissMembrSize;
+     uint *nonMissMembrIndx;
++    rfsrc_trace_event("node_start", treeID, (int)repMembrSize, (int)(parent -> depth), (double)(parent -> nodeID));
+     stackSplitPreliminary(repMembrSize,
+                           & localSplitIndicator,
+                           & splitVector);
+@@ -471,8 +474,8 @@
+     uint *nodeParentAtRisk, *nodeLeftAtRisk, *nodeRightAtRisk;
+     uint **nodeParentEventCR, **nodeLeftEventCR;
+     uint **nodeParentInclusiveAtRisk, **nodeLeftInclusiveAtRisk;
+-    nodeParentInclusiveAtRisk = nodeLeftInclusiveAtRisk = NULL;  
+-    nodeParentEventCR = nodeLeftEventCR = NULL;  
++    nodeParentInclusiveAtRisk = nodeLeftInclusiveAtRisk = NULL;
++    nodeParentEventCR = nodeLeftEventCR = NULL;
+     double deltaNum, deltaSubNum, deltaDen, deltaSubDen;
+     uint   tIndx;
+     uint   q, s, r;
+@@ -739,6 +742,7 @@
+               delta = RF_nativeNaN;
+             }
+             if (!RF_nativeIsNaN(delta)) {
++              rfsrc_trace_event("bin_stat_CR", treeID, (int)covariate, (int)j, delta);
+               if(RF_nativeIsNaN(deltaMax)) {
+                 deltaMax = delta;
+                 indexMax = j;
+@@ -753,7 +757,8 @@
+             if (factorFlag == FALSE) {
+               priorMembrIter = currentMembrIter - 1;
+             }
+-          }  
++          }
++          rfsrc_trace_event("feat_stat_CR", treeID, (int)covariate, (int)indexMax, deltaMax);
+           updateMaximumSplit(treeID,
+                              parent,
+                              deltaMax,
+@@ -765,7 +770,7 @@
+                              & localSplitIndicator,
+                              splitVectorPtr,
+                              splitInfoMax);
+-        }  
++        }
+         else {
+         }
+         if (!((RF_mRecordSize == 0) || (multImpFlag) || (!(RF_optHigh & OPT_MISS_SKIP)))) {

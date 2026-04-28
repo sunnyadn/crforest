@@ -1,0 +1,62 @@
+--- a/src/survivalE.c
++++ b/src/survivalE.c
+@@ -12,6 +12,24 @@
+ #include "impute.h"
+ #include "nrutil.h"
+ #include "error.h"
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++/* RFSRC_TRACE_UNO patches: opt-in trace of getCRPerformance inputs and
++   getCRConcordanceIndexIPCW_Fenwick results, gated on the
++   RFSRC_TRACE_UNO env var holding a writable file path. The fp is
++   re-opened on every call to track multi-fit sessions. */
++static FILE *rfsrc_uno_fp = NULL;
++static char  rfsrc_uno_path_seen[1024] = "";
++static void rfsrc_uno_maybe_open(void) {
++  const char *path = getenv("RFSRC_TRACE_UNO");
++  const char *effective = (path && path[0]) ? path : "";
++  if (strcmp(rfsrc_uno_path_seen, effective) == 0) return;
++  if (rfsrc_uno_fp) { fclose(rfsrc_uno_fp); rfsrc_uno_fp = NULL; }
++  strncpy(rfsrc_uno_path_seen, effective, sizeof(rfsrc_uno_path_seen) - 1);
++  rfsrc_uno_path_seen[sizeof(rfsrc_uno_path_seen) - 1] = '\0';
++  if (effective[0]) rfsrc_uno_fp = fopen(effective, "w");
++}
+ void updateEnsembleSurvival(char mode,
+                             uint treeID,
+                             char normalizationFlag) {
+@@ -955,6 +973,11 @@
+   free_dvector(w2, 1, n);
+   free_dvector(p, 1, n);
+   free_dvector(t, 1, n);
++  rfsrc_uno_maybe_open();
++  if (rfsrc_uno_fp) {
++    fprintf(rfsrc_uno_fp, "RFSRC_TRACE_UNO_RESULT eventType=%u n=%u denomW=%.17g numerW=%.17g\n",
++            eventType, n, denomW, numerW);
++  }
+   if (denomW <= 0.0) {
+     result = RF_nativeNaN;
+   }
+@@ -986,6 +1009,22 @@
+   }
+   if (weight != NULL) {
+     for (j = 1; j <= RF_eventTypeSize; j++) {
++      rfsrc_uno_maybe_open();
++      if (rfsrc_uno_fp) {
++        uint __i;
++        fprintf(rfsrc_uno_fp, "RFSRC_TRACE_UNO_INPUTS eventType=%u obsSize=%u\n",
++                RF_eventType[j], obsSize);
++        for (__i = 1; __i <= obsSize; __i++) {
++          fprintf(rfsrc_uno_fp,
++                  "RFSRC_TRACE_UNO_OBS i=%u t=%.17g s=%.17g pred=%.17g denom=%.17g w=%.17g\n",
++                  __i,
++                  responsePtr[RF_timeIndex][__i],
++                  responsePtr[RF_statusIndex][__i],
++                  yearsLost[j][__i],
++                  denom[__i],
++                  weight[__i]);
++        }
++      }
+       concordanceIndex = getCRConcordanceIndexIPCW_Fenwick(obsSize,
+                                                            responsePtr[RF_timeIndex],
+                                                            responsePtr[RF_statusIndex],
