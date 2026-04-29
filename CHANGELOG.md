@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-04-28
+
+### Changed
+
+- PyPI license metadata now uses the PEP 639 SPDX expression
+  (`license = "Apache-2.0"` + explicit `license-files = ["LICENSE", "NOTICE"]`)
+  instead of the legacy `license = { file = "LICENSE" }` form, which
+  caused the entire Apache-2.0 license body to be dumped into the
+  rendered `License:` field on the PyPI project page. Drops the now-
+  redundant `License :: OSI Approved :: Apache Software License`
+  classifier per PEP 639. Bumps build requirement to `hatchling>=1.27`
+  for SPDX support.
+
+### Note
+
+This release is also the first one Zenodo archives — the GitHub-Zenodo
+integration was enabled after 0.1.1, so 0.1.0 and 0.1.1 do not have
+DOIs. Cite v0.1.2 (or later) as the canonical reference.
+
 ## [0.1.1] — 2026-04-28
 
 ### Fixed
