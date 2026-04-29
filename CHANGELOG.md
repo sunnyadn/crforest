@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-04-28
+
+### Fixed
+
+- README tagline cited "5–7× faster than randomForestSRC", inconsistent
+  with the Highlights bullet ("4.5–6×") and the pyproject Summary
+  metadata that already shipped the corrected number. README tagline
+  now matches.
+
 ## [0.1.0] — 2026-04-27
 
 Initial public release. Pre-alpha; API may change before 1.0.
