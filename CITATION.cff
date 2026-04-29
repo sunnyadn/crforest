@@ -10,7 +10,14 @@ abstract: >-
 type: software
 version: 0.1.2
 date-released: 2026-04-29
-doi: 10.5281/zenodo.19876282
+doi: 10.5281/zenodo.19876283
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.19876282
+    description: Concept DOI (always resolves to latest version)
+  - type: doi
+    value: 10.5281/zenodo.19876283
+    description: Version DOI (v0.1.2)
 url: https://github.com/sunnyadn/crforest
 repository-code: https://github.com/sunnyadn/crforest
 repository-artifact: https://pypi.org/project/crforest/
