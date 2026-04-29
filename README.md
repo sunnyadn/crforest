@@ -13,14 +13,10 @@ researchers currently endure for competing-risks survival analysis.
   fit and predict, Aalen-Johansen CIF, Nelson-Aalen CHF, cause-specific
   Harrell + Uno IPCW C-indices, OOB Breiman permutation VIMP — out of the box.
 - **4.5–6× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
-  at matched accuracy on real clinical workloads (real CHF cohort, n ≈ 75k,
-  p = 58, ntree = 100, same machine, rfSRC 3.6.2 built with full OpenMP
-  at 28 threads; HF Harrell C-index tied at 0.864). For R-on-macOS users
-  running rfSRC effectively single-threaded the gap widens to ~58×.
-  Sub-linear wall scaling to n = 1M (122 s).
+  at matched accuracy (HF Harrell C tied at 0.864, real CHF n ≈ 75k);
+  ~58× faster than rfSRC built without OpenMP (default R-on-macOS).
 - **Order-of-magnitude faster than [scikit-survival](https://scikit-survival.readthedocs.io/)**
-  at sksurv's best config (5.4× at n = 5k, 192× at n = 50k), without
-  giving up CIF/CHF outputs that sksurv has to disable to fit at scale.
+  (5.4× at n = 5k, 192× at n = 50k), without disabling CIF/CHF outputs.
 - **Bit-identical to randomForestSRC** with `equivalence="rfsrc"` —
   reproduces the per-tree mtry/nsplit RNG stream for paper-grade
   reproducibility, sensitivity checks, and rfSRC-baseline migrations.
@@ -151,7 +147,7 @@ their best config (`n_jobs=-1`; sksurv `low_memory=True`):
 | 50 000 | 2 935.3 s (49 min) / 0.55 GB | **15.3 s / 6.80 GB** | **191.6×** |
 
 The wall-time gap **widens** with n (sksurv RSF wall scales ≈ n^2.2 with
-default `min_samples_leaf=3`; crforest histogram split kernel ≈ n^0.8).
+default `min_samples_leaf=3`; crforest histogram split kernel ≈ n^0.6).
 At every paired point crforest also provides Aalen-Johansen CIF,
 Nelson-Aalen CHF, and risk scores; sksurv `low_memory=True` provides
 only `predict()` risk scores — `predict_cumulative_hazard_function` and
@@ -186,7 +182,7 @@ unfavourable.
 
 The compact leaf storage (per-cause integer event/at-risk counts only;
 CIF/CHF tables materialise lazily on first predict) keeps pickle size
-proportional to the cohort: n = 100k, ntree = 100 pickles to ~3.6 GB.
+proportional to the cohort: n = 100k, ntree = 100 pickles to ~5.0 GB.
 
 ## API (one-line summary)
 
