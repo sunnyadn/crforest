@@ -42,11 +42,24 @@ pred <- predict(fit, newdata = test_df, importance = "none")
 c1 <- 1 - tail(pred$err.rate[, "event.1"], 1)
 c2 <- 1 - tail(pred$err.rate[, "event.2"], 1)
 
+# Dump the risk vector so the Python parent can re-score with the same
+# concordance_index_cr the README's existing 0.8642/0.8643 used (Wolbers
+# cause-specific), not rfSRC's native err.rate (Ishwaran integrated
+# mortality). Two metrics differ by ~0.01-0.02 on this cohort.
+risk_path <- sprintf("/tmp/rfsrc_n75k_seed%d_cores%d_risk.parquet", seed, rf_cores)
+arrow::write_parquet(
+  data.frame(test_idx = test_idx - 1L,
+             risk1 = pred$predicted[, 1],
+             risk2 = pred$predicted[, 2]),
+  risk_path
+)
+
 cat("RESULT_JSON ", jsonlite::toJSON(list(
   lib       = "rfsrc",
   seed      = seed,
   rf_cores  = rf_cores,
   fit_wall  = fit_wall,
   harrell_c1 = unname(c1),
-  harrell_c2 = unname(c2)
+  harrell_c2 = unname(c2),
+  risk_path = risk_path
 ), auto_unbox = TRUE), "\n", sep = "")
