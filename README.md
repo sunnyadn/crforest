@@ -235,7 +235,28 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Citation
 
-A paper describing crforest is in preparation. Until it is out, please cite
-the project URL and version. Algorithmic references (Park-Miller, Bays-Durham,
-Wolbers, Uno, Cole & Hernán, Kaplan-Meier, Breiman, Ishwaran) are listed in
+If you use crforest in your research, please cite the version-specific
+Zenodo DOI for the release you ran. For v0.1.2:
+
+```bibtex
+@software{yang_crforest_2026,
+  author    = {Yang, Sunny and Zhao, Wanqi},
+  title     = {{crforest: competing-risks random survival forests for Python}},
+  year      = {2026},
+  publisher = {Zenodo},
+  version   = {0.1.2},
+  doi       = {10.5281/zenodo.19876283},
+  url       = {https://doi.org/10.5281/zenodo.19876282},
+}
+```
+
+The `doi` field is the version-specific DOI (frozen at v0.1.2); the
+`url` resolves through the concept DOI to whatever is the latest
+release. GitHub's "Cite this repository" button (top-right of the repo
+page) generates the same record from [`CITATION.cff`](CITATION.cff).
+A paper describing crforest is in preparation; this section will be
+updated when it is out.
+
+Algorithmic references (Park-Miller, Bays-Durham, Wolbers, Uno, Cole &
+Hernán, Kaplan-Meier, Breiman, Ishwaran) are listed in
 [`docs/REFERENCES.md`](docs/REFERENCES.md).
