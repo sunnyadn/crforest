@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use crforest in your research, please cite it as below."
+title: "crforest: competing risks random survival forests for Python"
+abstract: >-
+  A Python implementation of competing-risks random survival forests with
+  a scikit-learn-compatible API, Aalen-Johansen CIF and Nelson-Aalen CHF
+  outputs, cause-specific Wolbers and Uno IPCW concordance metrics, OOB
+  Breiman permutation variable importance, and bit-identical
+  reproducibility with randomForestSRC.
+type: software
+version: 0.1.2
+date-released: 2026-04-29
+doi: 10.5281/zenodo.19876282
+url: https://github.com/sunnyadn/crforest
+repository-code: https://github.com/sunnyadn/crforest
+repository-artifact: https://pypi.org/project/crforest/
+license: Apache-2.0
+authors:
+  - family-names: Yang
+    given-names: Sunny
+    email: guangy4@illinois.edu
+  - family-names: Zhao
+    given-names: Wanqi
+    email: wanqi.zhao@ucalgary.ca
+keywords:
+  - survival-analysis
+  - competing-risks
+  - random-forest
+  - machine-learning
+  - biostatistics
+  - python

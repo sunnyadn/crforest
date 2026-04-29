@@ -1,5 +1,8 @@
 # crforest
 
+[![PyPI version](https://img.shields.io/pypi/v/crforest.svg)](https://pypi.org/project/crforest/)
+[![DOI](https://zenodo.org/badge/1222696007.svg)](https://doi.org/10.5281/zenodo.19876282)
+
 Competing-risks random survival forests for Python. 4.5–6× faster than
 randomForestSRC, scales to n = 10⁶ in minutes, scikit-learn-compatible.
 Designed to replace the Python → R workflow split that applied
