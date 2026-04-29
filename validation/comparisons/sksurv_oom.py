@@ -106,6 +106,8 @@ def child_main(
                 wall=float("nan"),
                 peak_rss_gb=float("nan"),
                 pickle_gb=float("nan"),
+                harrell_c_collapsed=float("nan"),
+                wolbers_c_cause1=float("nan"),
                 error=f"setrlimit({mem_cap_gb}GB): {exc}",
             )
             _emit(out)
@@ -115,11 +117,23 @@ def child_main(
         X, t, e_cr = make_synthetic(n, p, seed)
         e_se = (e_cr > 0).astype(np.int64)  # single-event collapse for sksurv
 
+        # 80/20 holdout (same split for both libs at a given seed), keyed on
+        # seed so per-cell wall+RSS are still per-seed-paired.
+        rng_split = np.random.default_rng(seed)
+        perm = rng_split.permutation(n)
+        n_train = int(0.8 * n)
+        tr, te = perm[:n_train], perm[n_train:]
+        X_tr, t_tr, e_cr_tr, e_se_tr = X[tr], t[tr], e_cr[tr], e_se[tr]
+        X_te, t_te, e_cr_te, e_se_te = X[te], t[te], e_cr[te], e_se[te]
+
+        harrell_c_collapsed = float("nan")
+        wolbers_c_cause1 = float("nan")
+
         if lib == "sksurv":
             from sksurv.ensemble import RandomSurvivalForest
 
-            y = np.array(
-                list(zip(e_se.astype(bool), t, strict=True)),
+            y_tr = np.array(
+                list(zip(e_se_tr.astype(bool), t_tr, strict=True)),
                 dtype=[("event", "?"), ("time", "<f8")],
             )
             model = RandomSurvivalForest(
@@ -130,12 +144,21 @@ def child_main(
                 low_memory=low_memory_sksurv,
             )
             t0 = time.perf_counter()
-            model.fit(X, y)
+            model.fit(X_tr, y_tr)
             wall = time.perf_counter() - t0
             fitted = model
 
+            from sksurv.metrics import concordance_index_censored
+
+            risk = model.predict(X_te)
+            harrell_c_collapsed = float(
+                concordance_index_censored(e_se_te.astype(bool), t_te, risk)[0]
+            )
+            # Wolbers cause-1 left NaN — sksurv RSF on collapsed events has no
+            # cause-specific risk to evaluate.
+
         elif lib == "crforest":
-            from crforest import CompetingRiskForest
+            from crforest import CompetingRiskForest, concordance_index_cr
 
             fitted = CompetingRiskForest(
                 n_estimators=ntree,
@@ -144,8 +167,16 @@ def child_main(
                 device="cpu",  # avoid auto-detect on hosts w/ broken cupy install
             )
             t0 = time.perf_counter()
-            fitted.fit(X, t, e_cr)
+            fitted.fit(X_tr, t_tr, e_cr_tr)
             wall = time.perf_counter() - t0
+
+            from sksurv.metrics import concordance_index_censored
+
+            risk1 = fitted.predict_risk(X_te, cause=1)
+            harrell_c_collapsed = float(
+                concordance_index_censored(e_se_te.astype(bool), t_te, risk1)[0]
+            )
+            wolbers_c_cause1 = float(concordance_index_cr(e_cr_te, t_te, risk1, cause=1))
 
         else:
             raise ValueError(f"unknown lib: {lib}")
@@ -160,6 +191,8 @@ def child_main(
             wall=wall,
             peak_rss_gb=_peak_rss_gb(),
             pickle_gb=pickle_bytes / 1e9 if pickle_bytes >= 0 else float("nan"),
+            harrell_c_collapsed=harrell_c_collapsed,
+            wolbers_c_cause1=wolbers_c_cause1,
             error="",
         )
 
@@ -169,6 +202,8 @@ def child_main(
             wall=float("nan"),
             peak_rss_gb=_peak_rss_gb(),
             pickle_gb=float("nan"),
+            harrell_c_collapsed=float("nan"),
+            wolbers_c_cause1=float("nan"),
             error=f"MemoryError: {exc}",
         )
 
@@ -178,6 +213,8 @@ def child_main(
             wall=float("nan"),
             peak_rss_gb=_peak_rss_gb(),
             pickle_gb=float("nan"),
+            harrell_c_collapsed=float("nan"),
+            wolbers_c_cause1=float("nan"),
             error=f"{type(exc).__name__}: {str(exc)[:300]}",
         )
 
@@ -237,6 +274,8 @@ def run_cell(
             "wall": float("nan"),
             "peak_rss_gb": float("nan"),
             "pickle_gb": float("nan"),
+            "harrell_c_collapsed": float("nan"),
+            "wolbers_c_cause1": float("nan"),
             "error": error,
             "wall_outer": elapsed,
         }
@@ -385,7 +424,13 @@ def main() -> None:
     print("\n## Summary\n", flush=True)
     ok = df[df["status"] == "ok"].copy()
     if len(ok):
-        agg = ok.groupby(["lib", "n"])[["wall", "peak_rss_gb", "pickle_gb"]].mean().round(3)
+        agg = (
+            ok.groupby(["lib", "n"])[
+                ["wall", "peak_rss_gb", "pickle_gb", "harrell_c_collapsed", "wolbers_c_cause1"]
+            ]
+            .mean()
+            .round(4)
+        )
         print(agg.to_string(), flush=True)
 
     for lib in libs:
