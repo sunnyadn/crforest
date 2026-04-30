@@ -153,6 +153,60 @@ def test_nelson_aalen_cs_matches_sum_of_all_cause():
     assert np.allclose(chf_cs.sum(axis=0), chf_all, atol=1e-12)
 
 
+def test_aalen_johansen_from_counts_batched_matches_per_leaf():
+    """Vectorized batched AJ matches per-leaf helper bit-identical (1e-12)
+    on a multi-leaf fixture with mixed at-risk profiles, parallel to the
+    GPU equivalence test in test_gpu_smoke.py."""
+    from crforest._estimators import (
+        aalen_johansen_from_counts,
+        aalen_johansen_from_counts_batched,
+    )
+
+    rng = np.random.default_rng(11)
+    n_leaves, n_causes, n_time = 20, 3, 32
+
+    raw_counts = rng.integers(0, 5, size=(n_leaves, n_time), dtype=np.uint32)
+    at_risk = np.zeros((n_leaves, n_time), dtype=np.uint32)
+    for i in range(n_leaves):
+        running = np.uint32(0)
+        for t in range(n_time - 1, -1, -1):
+            running += raw_counts[i, t]
+            at_risk[i, t] = running
+    event_counts = rng.integers(0, 4, size=(n_leaves, n_causes, n_time), dtype=np.uint32)
+    for i in range(n_leaves):
+        for t in range(n_time):
+            if int(event_counts[i, :, t].sum()) > at_risk[i, t]:
+                event_counts[i, :, t] = 0
+
+    expected = np.zeros((n_leaves, n_causes, n_time), dtype=np.float64)
+    for i in range(n_leaves):
+        expected[i] = aalen_johansen_from_counts(event_counts[i], at_risk[i], n_causes)
+    got = aalen_johansen_from_counts_batched(event_counts, at_risk, n_causes)
+    np.testing.assert_allclose(got, expected, rtol=1e-12, atol=1e-12)
+
+
+def test_aalen_johansen_from_counts_batched_zero_at_risk_tail():
+    """Batched AJ handles zero-at-risk tail bins without divide-by-zero
+    or NaN, matching the per-leaf helper exactly."""
+    from crforest._estimators import (
+        aalen_johansen_from_counts,
+        aalen_johansen_from_counts_batched,
+    )
+
+    rng = np.random.default_rng(13)
+    n_leaves, n_causes, n_time = 8, 2, 16
+    event_counts = rng.integers(0, 3, size=(n_leaves, n_causes, n_time), dtype=np.uint32)
+    at_risk = np.full((n_leaves, n_time), 5, dtype=np.uint32)
+    at_risk[:, -3:] = 0  # zero tail
+
+    expected = np.zeros((n_leaves, n_causes, n_time), dtype=np.float64)
+    for i in range(n_leaves):
+        expected[i] = aalen_johansen_from_counts(event_counts[i], at_risk[i], n_causes)
+    got = aalen_johansen_from_counts_batched(event_counts, at_risk, n_causes)
+    assert np.isfinite(got).all()
+    np.testing.assert_allclose(got, expected, rtol=1e-12, atol=1e-12)
+
+
 def test_nelson_aalen_cs_monotone_nondecreasing():
     from crforest._estimators import nelson_aalen_cs
 

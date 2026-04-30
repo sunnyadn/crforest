@@ -330,7 +330,7 @@ def build_flat_tree(
     kernel; ``t_idx_full`` (fine, n_time_bins_full) is used to accumulate
     leaf event_counts so that leaf CIFs align with ``forest.time_grid_``.
     """
-    from crforest._estimators import aalen_johansen_from_counts
+    from crforest._estimators import aalen_johansen_from_counts_batched
 
     n_bag = bootstrap_indices.shape[0]
     N_max_nodes = max(64, 4 * n_bag // max(1, min_samples_leaf))
@@ -372,14 +372,12 @@ def build_flat_tree(
         out_leaf_at_risk,
     )
 
-    # Compute leaf-CIF table from event_counts + at_risk via Aalen-Johansen.
-    leaf_table = np.zeros((n_leaves, n_causes, n_time_bins_full), dtype=np.float64)
-    for k in range(n_leaves):
-        leaf_table[k] = aalen_johansen_from_counts(
-            out_leaf_event_counts[k],
-            out_leaf_at_risk[k],
-            n_causes,
-        )
+    # Compute leaf-CIF table in one vectorized pass over the leaf axis.
+    leaf_table = aalen_johansen_from_counts_batched(
+        out_leaf_event_counts[:n_leaves],
+        out_leaf_at_risk[:n_leaves],
+        n_causes,
+    )
 
     # Persist raw uint32 counts so predict_chf can lazily materialise the
     # Nelson-Aalen leaf table (see _hist_tree.predict_tree_hist_chf).

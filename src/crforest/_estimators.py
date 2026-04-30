@@ -89,6 +89,48 @@ def aalen_johansen_from_counts(
     return cif
 
 
+def aalen_johansen_from_counts_batched(
+    event_counts: np.ndarray,
+    at_risk: np.ndarray,
+    n_causes: int,
+) -> np.ndarray:
+    """Vectorized Aalen-Johansen CIF over a leaf-axis batch.
+
+    Bulk port of ``aalen_johansen_from_counts`` over a leading leaf axis.
+    Bit-identical to a per-leaf loop modulo float64 op order: hazard = d/ar
+    (zero where ar==0); KM survival is left-continuous (surv[..., 0]=1);
+    per-cause CIF is cumsum_t(surv * d_k / ar).
+
+    Replaces a Python-level loop over leaves; the per-call allocator and
+    small-array cumsum overhead grew super-linearly with ntree under loky
+    worker contention (profile_fit cliff diagnosis 2026-04-29).
+
+    Parameters
+    ----------
+    event_counts : ndarray, shape (n_leaves, n_causes, n_times)
+    at_risk      : ndarray, shape (n_leaves, n_times)
+    n_causes     : int (kept for signature parity; inferred from shape)
+
+    Returns
+    -------
+    cif : ndarray, shape (n_leaves, n_causes, n_times), float64
+    """
+    ar = np.asarray(at_risk, dtype=np.float64)  # (L, T)
+    ec = np.asarray(event_counts, dtype=np.float64)  # (L, K, T)
+    d_any = ec.sum(axis=1)  # (L, T)
+    safe_ar = np.where(ar > 0, ar, 1.0)  # (L, T)
+    h_any = np.where(ar > 0, d_any / safe_ar, 0.0)  # (L, T)
+
+    n_times = ar.shape[1]
+    surv = np.ones_like(ar)
+    if n_times > 1:
+        surv[:, 1:] = np.cumprod(1.0 - h_any[:, :-1], axis=1)
+
+    h_k = np.where(ar[:, None, :] > 0, ec / safe_ar[:, None, :], 0.0)  # (L, K, T)
+    cif = np.cumsum(surv[:, None, :] * h_k, axis=2)  # (L, K, T)
+    return cif
+
+
 def nelson_aalen_from_counts(
     event_counts: np.ndarray,
     at_risk: np.ndarray,

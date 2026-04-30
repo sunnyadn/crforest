@@ -60,6 +60,9 @@ docs/superpowers/
 validation/reports/
 # Intermediate CSVs from validation/gen_datasets.R (parquet is the source of truth)
 validation/data/*.csv
+# Local profiling artifacts (regenerated per run; see validation/profile_fit.py)
+validation/data/profile_fit_*.pstats
+validation/data/profile_fit_*.txt
 
 # ζ head-to-head benchmark artifacts (spike code tracked, outputs regenerated)
 validation/spikes/zeta/data/
