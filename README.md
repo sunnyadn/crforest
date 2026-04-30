@@ -5,7 +5,8 @@
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19876282-blue)](https://doi.org/10.5281/zenodo.19876282)
 
 Competing-risks random survival forests for Python. 4.5–6× faster than
-randomForestSRC, scales to n = 10⁶ in minutes, scikit-learn-compatible.
+randomForestSRC, scales to n = 10⁶ on a commodity workstation in ~2 min,
+scikit-learn-compatible.
 Designed to replace the Python → R workflow split that applied
 researchers currently endure for competing-risks survival analysis.
 
@@ -165,8 +166,10 @@ at n = 5k it already peaks at 16.8 GB RSS; at n = 10k it exceeds a 21.5
 GB cap on a 24 GB host. Numbers reproducible via
 [`validation/comparisons/sksurv_oom.py`](validation/comparisons/sksurv_oom.py).
 
-**Scaling (one-sided beyond the paired ranges).** crforest exhibits
-sub-linear wall growth in n with the histogram split kernel:
+**Scaling (one-sided beyond the paired ranges).** Same commodity
+workstation as the paired benches above (i7-14700K, 28 threads).
+crforest exhibits sub-linear wall growth in n with the histogram
+split kernel:
 
 | Workload (default config, ntree = 100) | crforest CPU wall | rfSRC | sksurv |
 |---|---|---|---|
