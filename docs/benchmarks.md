@@ -61,6 +61,8 @@ directly. Reproducible via
 
 ## vs scikit-survival, paired same machine
 
+![Wall time vs n on i7-14700K — crforest vs scikit-survival, synthetic 2-cause Weibull, p=58, ntree=100. Crforest reaches n=10⁶ in 60 s; scikit-survival is 544× slower at n=50k.](figures/scaling_curve.svg)
+
 i7-14700K, 28 threads, synthetic 2-cause Weibull DGP, p = 58, ntree =
 100, both libraries at their best config (`n_jobs=-1`; sksurv
 `low_memory=True`):
