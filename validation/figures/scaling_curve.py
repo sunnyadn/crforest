@@ -141,12 +141,12 @@ def render_svg(crforest_walls, out_path):
         ax.annotate(
             f"{ratio:.0f}× at n=50k",  # noqa: RUF001 (mult-sign is intentional in figure label)
             xy=(50_000, SKSURV_WALLS[50_000]),
-            xytext=(50_000, SKSURV_WALLS[50_000] * 3.5),
+            xytext=(50_000, 250),  # between the two curves on log scale; below title
             fontsize=14,
             fontweight="bold",
             ha="center",
             color="#333333",
-            arrowprops=dict(arrowstyle="-", color="#888888", linewidth=1.2),
+            arrowprops=dict(arrowstyle="->", color="#666666", linewidth=1.2),
         )
     if 1_000_000 in crforest_walls:
         ax.annotate(
