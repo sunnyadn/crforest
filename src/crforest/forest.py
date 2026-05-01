@@ -643,6 +643,48 @@ class CompetingRiskForest(BaseEstimator):
         c = cause - 1
         return self._ensemble_mean(X_input, predict_fn, lambda arr: arr[:, c, :].sum(axis=-1))
 
+    def predict_oob_risk(self, cause: int = 1) -> np.ndarray:
+        """Per-row OOB ensemble integrated-CHF risk on the training set.
+
+        For each training row, averages cause-specific integrated CHF over
+        only the trees where that row was out-of-bag. Mirrors rfSRC's
+        ``predict$predicted.oob[, cause]`` convention. Requires
+        ``bootstrap=True`` at fit time.
+
+        Rows in-bag for every tree (probability ~0.37**n_estimators, i.e.
+        vanishingly small for n_estimators >= 100) get a risk of 0.
+        """
+        check_is_fitted(self, "trees_")
+        if not self.bootstrap:
+            raise ValueError("predict_oob_risk needs bootstrap=True at fit time")
+        if cause < 1 or cause > self.n_causes_:
+            raise ValueError(f"cause={cause} out of range [1, {self.n_causes_}]")
+        X_train = getattr(self, "_X_train_oob_", None)
+        if X_train is None:
+            raise ValueError("training cache missing — refit the forest with bootstrap=True")
+        from crforest._importance import _ensemble_oob_predictions
+
+        bin_edges = getattr(self, "bin_edges_", None)
+        pred, count = _ensemble_oob_predictions(
+            self,
+            np.asarray(X_train, dtype=np.float64),
+            causes=[cause],
+            bin_edges=bin_edges,
+            time_grid=self.unique_times_,
+        )
+        return pred[0] / np.maximum(count, 1)
+
+    def oob_score(self, cause: int = 1) -> float:
+        """OOB Harrell C-index on the training set for ``cause``.
+
+        Computed against the cached training outcomes using the OOB
+        integrated-CHF risk from :meth:`predict_oob_risk`. Requires
+        ``bootstrap=True`` at fit time.
+        """
+        risk = self.predict_oob_risk(cause=cause)
+        time, event = unpack_structured_y(self._y_train_oob_)
+        return float(concordance_index_cr(event, time, risk, cause=cause))
+
     def score(self, X, time, event=None, cause: int = 1, kind: str = "integrated_chf") -> float:
         """Cause-specific Harrell C-index. ``kind`` forwards to predict_risk.
 
