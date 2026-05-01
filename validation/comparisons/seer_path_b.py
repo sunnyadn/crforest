@@ -159,16 +159,21 @@ def main() -> None:
     parser.add_argument("--n-jobs", type=int, default=-1)
     parser.add_argument("--seeds", default="42,43,44", help="comma-sep seeds; default 3")
     parser.add_argument(
-        "--cores-on", type=int, default=os.cpu_count() or 1,
+        "--cores-on",
+        type=int,
+        default=os.cpu_count() or 1,
         help="rf.cores for OMP-on cell (default: all)",
     )
     parser.add_argument(
-        "--timeout", type=int, default=14400,
+        "--timeout",
+        type=int,
+        default=14400,
         help="per-cell timeout in s (default 4hr)",
     )
     parser.add_argument("--out", default="/tmp/seer_path_b.parquet")
     parser.add_argument(
-        "--cells", default="rfsrc_on,crforest",
+        "--cells",
+        default="rfsrc_on,crforest",
         help="comma-sep subset of {rfsrc_on, crforest}",
     )
     parser.add_argument("--machine", default=platform.node())
@@ -221,7 +226,8 @@ def main() -> None:
     ok = df[df["status"] == "ok"].copy()
     if len(ok):
         ok["cell"] = ok.apply(
-            lambda r: "rfsrc_on" if r["lib"] == "rfsrc" else "crforest", axis=1,
+            lambda r: "rfsrc_on" if r["lib"] == "rfsrc" else "crforest",
+            axis=1,
         )
         agg = (
             ok.groupby("cell")[["fit_wall", "peak_rss_gb", "harrell_c1", "harrell_c2"]]
