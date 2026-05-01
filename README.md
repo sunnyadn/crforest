@@ -18,12 +18,9 @@ researchers currently endure for competing-risks survival analysis.
   fit and predict, Aalen-Johansen CIF, Nelson-Aalen CHF, cause-specific
   Harrell + Uno IPCW C-indices, OOB Breiman permutation VIMP — out of the box.
 - **10–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
-  on real EHR-shaped data, measured matched-pair across consumer desktop /
-  laptop / HPC: cardio CHF cohort (n ≈ 75k, p = 58) lands at 14–22×;
-  oncology SEER breast cohort (n ≈ 238k, p = 17) lands at 11.6×. Both
-  libraries fit similarly well at every tested workload (HF/cancer-specific
-  C ≈ 0.85). ~95× faster than rfSRC built without OpenMP (default R-on-macOS
-  install).
+  on real EHR data (CHF 14–22×, SEER 11.6×; full tables in
+  [docs/benchmarks.md](docs/benchmarks.md)), with C ≈ 0.85 on both
+  libraries. ~95× faster than rfSRC built without OpenMP (default R-on-macOS).
 - **Order-of-magnitude faster than [scikit-survival](https://scikit-survival.readthedocs.io/)**
   (16.6× at n = 5k, 544× at n = 50k), without disabling CIF/CHF outputs.
 - **Bit-identical to randomForestSRC** with `equivalence="rfsrc"` —
@@ -96,29 +93,12 @@ print(vimp.sort_values("composite_vimp", ascending=False).head())
 See [docs/quickstart.md](docs/quickstart.md) for the full walkthrough — data
 format, prediction shapes, cross-validation, GPU, and migrating from rfSRC.
 
-## scikit-learn drop-in
-
-`CompetingRiskForest` is a real sklearn estimator: `BaseEstimator` subclass,
-`clone()`-friendly, picklable, and `fit(X, y)` / `score(X, y)` accept the
-scikit-survival-style structured `y` so `cross_val_score`, `KFold`, and
-`Pipeline` work without a wrapper.
-
-```python
-from sklearn.model_selection import KFold, cross_val_score
-from crforest import CompetingRiskForest, Surv
-
-y = Surv.from_arrays(event=event, time=time)
-forest = CompetingRiskForest(n_estimators=100, random_state=42, n_jobs=-1)
-
-cv = KFold(n_splits=5, shuffle=True, random_state=42)
-scores = cross_val_score(forest, X, y, cv=cv, n_jobs=-1)
-print(f"5-fold C-index, cause 1: {scores.mean():.3f} ± {scores.std():.3f}")
-```
-
-The legacy three-argument form `forest.fit(X, time, event)` keeps working,
-and `predict(X)` is an alias for `predict_risk(X, cause=1)` so the
-estimator slots straight into `Pipeline` / `cross_val_predict`. For
-cause-k risk or for CIF / CHF curves use the explicit methods.
+> **scikit-learn drop-in.** `CompetingRiskForest` is a real sklearn
+> estimator (`BaseEstimator`, `clone()`-friendly, picklable).
+> `cross_val_score`, `KFold`, `Pipeline` work without a wrapper — pass
+> `Surv.from_arrays(event, time)` as the `y` argument, or use the legacy
+> 3-arg `fit(X, time, event)` form. Full example in
+> [docs/quickstart.md § Cross-validation](docs/quickstart.md#cross-validation).
 
 ## Benchmarks
 
@@ -154,27 +134,12 @@ sksurv `low_memory=True` raises `NotImplementedError` for.
 14.5 GB RSS. Reproducible via
 [`validation/spikes/lambda/exp5_paper_scale_bench.py`](validation/spikes/lambda/exp5_paper_scale_bench.py).
 
-## API (one-line summary)
+## API
 
-| | |
-|---|---|
-| `CompetingRiskForest(...)` | the estimator; full parameter list in [`forest.py`](src/crforest/forest.py) |
-| `.fit(X, time, event)` or `.fit(X, y)` | legacy form takes `time` `(n,)` float and `event` `(n,)` int (`0`=censored, `1..K`=cause); sklearn form takes structured `y` from `Surv.from_arrays` |
-| `.predict(X)` | sklearn alias for `predict_risk(X, cause=1)`; shape `(n_samples,)` |
-| `.predict_cif(X, times=None)` | shape `(n_samples, n_causes, n_times)` |
-| `.predict_chf(X, times=None)` | shape `(n_samples, n_causes, n_times)` |
-| `.predict_risk(X, cause=1, kind="integrated_chf")` | shape `(n_samples,)` |
-| `.score(X, time, event, cause=1)` or `.score(X, y, cause=1)` | Wolbers cause-specific concordance |
-| `.compute_importance(...)` | per-cause + composite permutation VIMP DataFrame |
-| `Surv.from_arrays(event, time)` | structured `y` for sklearn `fit(X, y)` / `cross_val_score` |
-| `concordance_index_cr(event, time, estimate, cause=1)` | top-level metric for any risk score |
-
-After `.fit()`: `forest.n_causes_`, `forest.unique_times_`, `forest.time_grid_`,
-`forest.n_features_in_`, `forest.feature_importances_`, `forest.trees_`,
-`forest.inbag_` (when `equivalence="rfsrc"`).
-
-Two splitrules are available: `logrankCR` (composite competing-risks
-log-rank, default) and `logrank` (cause-specific).
+Full parameter list in [`src/crforest/forest.py`](src/crforest/forest.py);
+usage by task in [docs/quickstart.md](docs/quickstart.md). Two splitrules
+are available: `logrankCR` (composite competing-risks log-rank, default)
+and `logrank` (cause-specific).
 
 ## Documentation
 
@@ -202,9 +167,6 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Citation
 
-If you use crforest in your research, please cite the version-specific
-Zenodo DOI for the release you ran. For v0.1.2:
-
 ```bibtex
 @software{yang_crforest_2026,
   author    = {Yang, Sunny and Zhao, Wanqi},
@@ -217,13 +179,6 @@ Zenodo DOI for the release you ran. For v0.1.2:
 }
 ```
 
-The `doi` field is the version-specific DOI (frozen at v0.1.2); the
-`url` resolves through the concept DOI to whatever is the latest
-release. GitHub's "Cite this repository" button (top-right of the repo
-page) generates the same record from [`CITATION.cff`](CITATION.cff).
-A paper describing crforest is in preparation; this section will be
-updated when it is out.
-
-Algorithmic references (Park-Miller, Bays-Durham, Wolbers, Uno, Cole &
-Hernán, Kaplan-Meier, Breiman, Ishwaran) are listed in
-[`docs/REFERENCES.md`](docs/REFERENCES.md).
+DOI is version-specific. GitHub's "Cite this repository" button
+generates the same record from [`CITATION.cff`](CITATION.cff).
+Algorithmic references in [`docs/REFERENCES.md`](docs/REFERENCES.md).

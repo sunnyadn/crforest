@@ -128,8 +128,10 @@ c_uno = concordance_index_uno_cr(event, time, risk, cause=1, weights=w)
 
 ### Cross-validation
 
-Standard sklearn helpers work; just remember `time` and `event` are passed
-positionally to `fit`. A handy idiom for CV with the built-in scorer:
+Two equivalent paths.
+
+**Manual loop with the 3-arg form** — straightforward when `time` /
+`event` already exist as separate arrays:
 
 ```python
 from sklearn.model_selection import KFold
@@ -143,6 +145,26 @@ for train_idx, test_idx in kf.split(X):
     scores.append(f.score(X[test_idx], time[test_idx], event[test_idx], cause=1))
 print(f"CV C-index, cause 1: {np.mean(scores):.3f} ± {np.std(scores):.3f}")
 ```
+
+**sklearn drop-in with `cross_val_score`** — works because
+`CompetingRiskForest` is a real `BaseEstimator` subclass that accepts
+the scikit-survival-style structured `y`. No wrapper, no custom scorer:
+
+```python
+from sklearn.model_selection import KFold, cross_val_score
+from crforest import CompetingRiskForest, Surv
+
+y = Surv.from_arrays(event=event, time=time)
+forest = CompetingRiskForest(n_estimators=100, random_state=42, n_jobs=-1)
+
+cv = KFold(n_splits=5, shuffle=True, random_state=42)
+scores = cross_val_score(forest, X, y, cv=cv, n_jobs=-1)
+print(f"5-fold C-index, cause 1: {scores.mean():.3f} ± {scores.std():.3f}")
+```
+
+`predict(X)` is an alias for `predict_risk(X, cause=1)`, so the estimator
+also slots into `Pipeline` / `cross_val_predict`. For cause-`k` risk or
+CIF / CHF curves use the explicit methods.
 
 ## 5. Permutation variable importance (VIMP)
 
