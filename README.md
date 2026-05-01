@@ -4,9 +4,9 @@
 [![CI](https://github.com/sunnyadn/crforest/actions/workflows/ci.yml/badge.svg)](https://github.com/sunnyadn/crforest/actions/workflows/ci.yml)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19876282-blue)](https://doi.org/10.5281/zenodo.19876282)
 
-Competing-risks random survival forests for Python. ~15× faster than
-randomForestSRC on real EHR-shaped data, scales to n = 10⁶ on a consumer
-desktop in ~2 min, scikit-learn-compatible.
+Competing-risks random survival forests for Python. 10-22× faster than
+randomForestSRC on real EHR-shaped data (cardio + oncology cohorts),
+scales to n = 10⁶ on a consumer desktop in ~1 min, scikit-learn-compatible.
 Designed to replace the Python → R workflow split that applied
 researchers currently endure for competing-risks survival analysis.
 
@@ -17,12 +17,15 @@ researchers currently endure for competing-risks survival analysis.
 - **The only competing-risks Random Survival Forest in Python.** Three-state
   fit and predict, Aalen-Johansen CIF, Nelson-Aalen CHF, cause-specific
   Harrell + Uno IPCW C-indices, OOB Breiman permutation VIMP — out of the box.
-- **14–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
-  on real EHR-shaped data (HF Harrell C tied at 0.864, real CHF n ≈ 75k),
-  measured matched-pair across consumer desktop / laptop / HPC; ~95× faster
-  than rfSRC built without OpenMP (default R-on-macOS install).
+- **10–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
+  on real EHR-shaped data, measured matched-pair across consumer desktop /
+  laptop / HPC: cardio CHF cohort (n ≈ 75k, p = 58) lands at 14–22×;
+  oncology SEER breast cohort (n ≈ 238k, p = 17) lands at 11.6×. Both
+  libraries fit similarly well at every tested workload (HF/cancer-specific
+  C ≈ 0.85). ~95× faster than rfSRC built without OpenMP (default R-on-macOS
+  install).
 - **Order-of-magnitude faster than [scikit-survival](https://scikit-survival.readthedocs.io/)**
-  (5.4× at n = 5k, 192× at n = 50k), without disabling CIF/CHF outputs.
+  (16.6× at n = 5k, 544× at n = 50k), without disabling CIF/CHF outputs.
 - **Bit-identical to randomForestSRC** with `equivalence="rfsrc"` —
   reproduces the per-tree mtry/nsplit RNG stream for paper-grade
   reproducibility, sensitivity checks, and rfSRC-baseline migrations.
@@ -37,7 +40,7 @@ researchers currently endure for competing-risks survival analysis.
 | Cumulative hazard at scale               | ✓                              | ✓                                  | ✗¹                       |
 | OOB permutation VIMP                     | ✓                              | ✓                                  | ✗                        |
 | Bit-identical reproducibility mode       | ✓ (`equivalence="rfsrc"`)      | —                                  | n/a                      |
-| Scales to n = 10⁶                        | ✓                              | OOM at n ≳ 500 000                 | ✗¹ / OOM²                |
+| Scales to n = 10⁶                        | ✓ (63 s on i7)                 | memory-bound past n ≈ 500 000 on consumer hardware | ✗¹ / OOM²                |
 | Default parallelism                      | ✓ (`n_jobs=-1`)                | OpenMP (build-dependent; macOS Apple clang lacks it) | ✓        |
 | GPU preview                              | ✓ (CUDA 12)                    | ✗                                  | ✗                        |
 
@@ -145,19 +148,41 @@ rebuilding R against Homebrew gcc/clang, which most Mac R installs lack.
 On a 10-core Apple M4, rfSRC built without OpenMP runs at ~895 s vs
 crforest 9.42 s = **~95×** speedup at the default install path.
 
+**Cross-dataset validation (SEER breast cancer)** — n = 238 057 train /
+p = 17, ntree = 100, leaf = 3, nsplit = 10, seeds 42–44; HPC Xeon Gold
+6148 (32 cores, 187 GB), full cohort matched-pair:
+
+| Lib | Wall (mean ± std) | Peak RSS | Harrell C₁ | Harrell C₂ |
+|---|---|---|---|---|
+| crforest (`n_jobs=-1`) | **7.02 ± 0.31 s** | **8.83 GB** | 0.8652 | 0.8370 |
+| rfSRC OMP-on (`rf.cores=32`) | 81.56 ± 3.40 s | 55.17 GB | 0.8450 | 0.8090 |
+| Speedup / ratio | **11.6×** | **6.25× less** | — | — |
+
+C-index columns are listed using each library's own native scorer
+(crforest: cause-specific Wolbers concordance; rfSRC: native
+`err.rate`-derived cause-specific C). They come from different code
+paths and **should not be subtracted directly**; both report C ≈ 0.85
+which is the durable claim. The SEER speedup (11.6×) is materially
+smaller than CHF's 19.8× on the same HPC silicon because rfSRC's
+per-split exhaustive scan scales with p, and SEER has ~3× fewer
+features (p = 17 vs p = 58); the 10–22× cross-dataset band tracks p
+directly. Reproducible via [`validation/comparisons/seer_path_b.py`](validation/comparisons/seer_path_b.py)
+(requires your own SEER Research Data agreement; setup in
+[`validation/comparisons/SEER_README.md`](validation/comparisons/SEER_README.md)).
+
 **vs scikit-survival, paired same machine** — i7-14700K, 28 threads,
 synthetic 2-cause Weibull DGP, p = 58, ntree = 100, both libraries at
 their best config (`n_jobs=-1`; sksurv `low_memory=True`):
 
 | n | sksurv `low_memory=True` | crforest | speedup |
 |---|---|---|---|
-| 5 000 | 18.2 s / 0.22 GB peak RSS | **3.4 s / 1.83 GB** | **5.4×** |
-| 10 000 | 85.0 s / 0.26 GB | **5.6 s / 3.06 GB** | **15.1×** |
-| 25 000 | 609.7 s / 0.37 GB | **10.4 s / 4.82 GB** | **58.4×** |
-| 50 000 | 2 935.3 s (49 min) / 0.55 GB | **15.3 s / 6.80 GB** | **191.6×** |
+| 5 000 | 18.2 s / 0.22 GB peak RSS | **1.10 s / 1.62 GB** | **16.6×** |
+| 10 000 | 85.0 s / 0.26 GB | **1.84 s / 2.69 GB** | **46.2×** |
+| 25 000 | 609.7 s / 0.37 GB | **3.25 s / 3.99 GB** | **187.6×** |
+| 50 000 | 2 935.3 s (49 min) / 0.55 GB | **5.40 s / 5.67 GB** | **543.6×** |
 
 The wall-time gap **widens** with n (sksurv RSF wall scales ≈ n^2.2 with
-default `min_samples_leaf=3`; crforest histogram split kernel ≈ n^0.6).
+default `min_samples_leaf=3`; crforest histogram split kernel ≈ n^0.7).
 At every paired point crforest also provides Aalen-Johansen CIF,
 Nelson-Aalen CHF, and risk scores; sksurv `low_memory=True` provides
 only `predict()` risk scores — `predict_cumulative_hazard_function` and
@@ -177,9 +202,12 @@ sub-linear wall growth in n with the histogram split kernel:
 
 | Workload (default config, ntree = 100) | crforest CPU wall | rfSRC | sksurv |
 |---|---|---|---|
-| n = 75 000 (real CHF, paired) | 5.79 s | 84.75 s | OOM (`low_memory=False`) / extrapolated ~2.4 hr (`low_memory=True`) |
-| n = 1 000 000 (UKB-scale feasibility) | 122 s | not measured (rfSRC peak RSS at n = 75 000 already 22.7 GB OMP-on / 17.8 GB OMP-off; extrapolation puts n = 500 000 past 80 GB) | not feasible at full output capability |
+| n = 75 000 (real CHF, paired on i7) | 5.79 s | 84.75 s | extrapolated ~2.4 hr (`low_memory=True`); `low_memory=False` exceeds 21.5 GB at n = 10k already |
+| n = 238 057 (real SEER, paired on HPC) | 7.02 s | 81.56 s | extrapolated ~12 hr (n^2.2 from the n = 50k data point) |
+| n = 1 000 000 (UKB-scale feasibility, on i7) | **63 s** | not measured (rfSRC peak RSS at n = 75 000 already 22.7 GB OMP-on; rfSRC's per-tree storage roughly doubles with n) | not feasible at full output capability |
 
+The n = 1M number reproduces via
+[`validation/spikes/lambda/exp5_paper_scale_bench.py`](validation/spikes/lambda/exp5_paper_scale_bench.py).
 We do not publish a paired number above n ≈ 100 000 because both R and
 Python alternatives are impractical there, not because the comparison gets
 unfavourable.
