@@ -22,8 +22,9 @@ CLI:
 
 --subsample N  Random-subsample the cohort to N rows before splitting,
                for memory-constrained boxes where rfSRC OOMs at full N
-               (rfSRC at n=238k×p=17 needs ~55GB). Default: full cohort.
+               (rfSRC at n=238k, p=17 needs ~55GB). Default: full cohort.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -64,8 +65,9 @@ def parse_cs_tumor_size(s):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--src", type=Path, default=DEFAULT_SRC)
-    parser.add_argument("--subsample", type=int, default=None,
-                        help="random-subsample to this N before splitting")
+    parser.add_argument(
+        "--subsample", type=int, default=None, help="random-subsample to this N before splitting"
+    )
     args = parser.parse_args()
 
     print(f"reading {args.src} ({args.src.stat().st_size / 1e6:.1f} MB)...")
@@ -86,15 +88,17 @@ def main():
     print(f"after survival-quality filter: {df.shape}")
 
     cs = df["SEER cause-specific death classification"].eq("Dead (attributable to this cancer dx)")
-    oc = df["SEER other cause of death classification"].eq("Dead (attributable to causes other than this cancer dx)")
+    oc = df["SEER other cause of death classification"].eq(
+        "Dead (attributable to causes other than this cancer dx)"
+    )
     status = np.where(cs, 1, np.where(oc, 2, 0)).astype(np.int64)
     time = pd.to_numeric(df["Survival months"], errors="coerce").astype(np.float64).to_numpy()
 
     cols_numeric = {
-        "age_mid":       parse_age_band(df["Age recode with <1 year olds and 90+"]),
-        "year_dx":       df["_year"].astype(np.float64),
-        "nodes_pos":     parse_node_count(df["Regional nodes positive (1988+)"]),
-        "nodes_exam":    parse_node_count(df["Regional nodes examined (1988+)"]),
+        "age_mid": parse_age_band(df["Age recode with <1 year olds and 90+"]),
+        "year_dx": df["_year"].astype(np.float64),
+        "nodes_pos": parse_node_count(df["Regional nodes positive (1988+)"]),
+        "nodes_exam": parse_node_count(df["Regional nodes examined (1988+)"]),
         "cs_tumor_size": parse_cs_tumor_size(df["CS tumor size (2004-2015)"]),
     }
     cols_categorical = [
@@ -144,10 +148,12 @@ def main():
         print(f"subsampled to {args.subsample}: {out_df.shape}")
 
     out_df.to_parquet(DST_PARQUET)
-    print(f"\nfeature mapping:")
+    print("\nfeature mapping:")
     for x, n in feature_names:
         print(f"  {x:5s}  {n}")
-    print(f"\nwrote {DST_PARQUET} ({DST_PARQUET.stat().st_size / 1e6:.1f} MB), shape={out_df.shape}")
+    print(
+        f"\nwrote {DST_PARQUET} ({DST_PARQUET.stat().st_size / 1e6:.1f} MB), shape={out_df.shape}"
+    )
     print(f"status dist: {pd.Series(out_df['status']).value_counts().to_dict()}")
 
     rng = np.random.default_rng(SEED + 1)
