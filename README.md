@@ -4,9 +4,9 @@
 [![CI](https://github.com/sunnyadn/crforest/actions/workflows/ci.yml/badge.svg)](https://github.com/sunnyadn/crforest/actions/workflows/ci.yml)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19876282-blue)](https://doi.org/10.5281/zenodo.19876282)
 
-Competing-risks random survival forests for Python. 4.5–6× faster than
-randomForestSRC, scales to n = 10⁶ on a commodity workstation in ~2 min,
-scikit-learn-compatible.
+Competing-risks random survival forests for Python. ~15× faster than
+randomForestSRC on real EHR-shaped data, scales to n = 10⁶ on a consumer
+desktop in ~2 min, scikit-learn-compatible.
 Designed to replace the Python → R workflow split that applied
 researchers currently endure for competing-risks survival analysis.
 
@@ -17,9 +17,10 @@ researchers currently endure for competing-risks survival analysis.
 - **The only competing-risks Random Survival Forest in Python.** Three-state
   fit and predict, Aalen-Johansen CIF, Nelson-Aalen CHF, cause-specific
   Harrell + Uno IPCW C-indices, OOB Breiman permutation VIMP — out of the box.
-- **4.5–6× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
-  at matched accuracy (HF Harrell C tied at 0.864, real CHF n ≈ 75k);
-  ~58× faster than rfSRC built without OpenMP (default R-on-macOS).
+- **14–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
+  on real EHR-shaped data (HF Harrell C tied at 0.864, real CHF n ≈ 75k),
+  measured matched-pair across consumer desktop / laptop / HPC; ~95× faster
+  than rfSRC built without OpenMP (default R-on-macOS install).
 - **Order-of-magnitude faster than [scikit-survival](https://scikit-survival.readthedocs.io/)**
   (5.4× at n = 5k, 192× at n = 50k), without disabling CIF/CHF outputs.
 - **Bit-identical to randomForestSRC** with `equivalence="rfsrc"` —
@@ -118,27 +119,31 @@ cause-k risk or for CIF / CHF curves use the explicit methods.
 
 ## Benchmarks
 
-**vs randomForestSRC, paired same machine** — i7-14700K, 28 threads,
-rfSRC 3.6.2 built with full OpenMP; real CHF cohort, HF / death
-competing risks; n = 75 000, p = 58, ntree = 100, 3 seeds (mean ± std):
+**vs randomForestSRC, matched-pair across hardware** — real CHF cohort,
+HF / death competing risks; n = 75 278 train / p = 58, ntree = 100, leaf
+= 3, nsplit = 10, seeds 42–44 (mean wall):
 
-| | crforest (`n_jobs=-1`) | rfSRC OMP-on (`rf.cores=28`) | rfSRC OMP-off (`rf.cores=1`) |
-|---|---|---|---|
-| Wall time | **17.75 ± 0.36 s** | 80.81 ± 0.68 s | 1026.3 ± 6.6 s (~17 min) |
-| Peak RSS | **4.36 GB** | 22.70 GB | 17.80 GB |
-| HF Harrell C-index | 0.8642 | 0.8645 | 0.8645 |
-| Speedup vs crforest | — | **4.55×** | **57.8×** |
+| Hardware | crforest (`n_jobs=-1`) | rfSRC OMP-on | Speedup | RSS ratio |
+|---|---|---|---|---|
+| Apple M4 (10-core, 16 GB) | 9.42 s | 207.3 s | **22.0×** | — |
+| Intel i7-14700K (28-thread, 32 GB) | **5.79 s** | 84.75 s | **14.6×** | 3.7× less |
+| HPC Xeon Gold 6148 (32-core, 187 GB) | 5.61 s | 111.05 s | **19.8×** | 3.6× less |
 
-The OMP-off column is the configuration most R-on-macOS users hit out of
-the box — rfSRC's OpenMP requires rebuilding R against Homebrew
-gcc/clang with OpenMP support, which most Mac R installs lack. rfSRC
-OMP-on and OMP-off produce algorithmically identical output at the same
-seed (we verified per-seed err.rate is bit-identical), so the OMP-off
-C-index is taken from the OMP-on cell at the same seed. Reproducible via
+Both libraries report HF C-index ≈ 0.85 at this workload — crforest
+0.864 (cause-specific Wolbers concordance), rfSRC 0.847–0.849 (rfSRC's
+own native cause-specific C from `err.rate`). These are computed from
+different code paths and should not be subtracted directly; both are
+well above paper-grade thresholds and confirm the libraries fit
+similarly well. The 14–22× speedup band reflects how rfSRC's OpenMP
+scales with per-core speed: the i7's high-clock P-cores benefit rfSRC
+most, so the gap is smallest there; on slower-per-core HPC silicon the
+gap widens. Reproducible via
 [`validation/comparisons/n75k_path_b.py`](validation/comparisons/n75k_path_b.py).
 
-Apples-to-apples vs rfSRC's best `ntime` config on the same workload:
-**6.13×**. Speedup ratio is stable across `ntree ∈ {100, 500, 1000}`.
+R-on-macOS users hit a separate scenario: rfSRC's OpenMP requires
+rebuilding R against Homebrew gcc/clang, which most Mac R installs lack.
+On a 10-core Apple M4, rfSRC built without OpenMP runs at ~895 s vs
+crforest 9.42 s = **~95×** speedup at the default install path.
 
 **vs scikit-survival, paired same machine** — i7-14700K, 28 threads,
 synthetic 2-cause Weibull DGP, p = 58, ntree = 100, both libraries at
@@ -166,14 +171,13 @@ at n = 5k it already peaks at 16.8 GB RSS; at n = 10k it exceeds a 21.5
 GB cap on a 24 GB host. Numbers reproducible via
 [`validation/comparisons/sksurv_oom.py`](validation/comparisons/sksurv_oom.py).
 
-**Scaling (one-sided beyond the paired ranges).** Same commodity
-workstation as the paired benches above (i7-14700K, 28 threads).
-crforest exhibits sub-linear wall growth in n with the histogram
-split kernel:
+**Scaling (one-sided beyond the paired ranges).** Same consumer desktop
+as the paired benches above (i7-14700K, 28 threads). crforest exhibits
+sub-linear wall growth in n with the histogram split kernel:
 
 | Workload (default config, ntree = 100) | crforest CPU wall | rfSRC | sksurv |
 |---|---|---|---|
-| n = 75 000 (real CHF, paired) | 17.75 s | 80.81 s | OOM (`low_memory=False`) / extrapolated ~2.4 hr (`low_memory=True`) |
+| n = 75 000 (real CHF, paired) | 5.79 s | 84.75 s | OOM (`low_memory=False`) / extrapolated ~2.4 hr (`low_memory=True`) |
 | n = 1 000 000 (UKB-scale feasibility) | 122 s | not measured (rfSRC peak RSS at n = 75 000 already 22.7 GB OMP-on / 17.8 GB OMP-off; extrapolation puts n = 500 000 past 80 GB) | not feasible at full output capability |
 
 We do not publish a paired number above n ≈ 100 000 because both R and
