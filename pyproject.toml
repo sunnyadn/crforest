@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "crforest"
-version = "0.1.2"
-description = "Competing risks random survival forests for Python. 4.5–6× faster than randomForestSRC, scales to n=10⁶ in minutes, scikit-learn-compatible."
+version = "0.2.0"
+description = "Competing-risks random survival forests for Python. 10–22× faster than randomForestSRC on real EHR data, scales to n=10⁶, scikit-learn-compatible."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
@@ -22,7 +22,7 @@ keywords = [
     "biostatistics",
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",

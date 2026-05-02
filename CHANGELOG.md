@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-05-02
+
+Performance + scope expansion. Single-machine fit is ~6–7× faster than
+0.1.2 on real EHR-shaped data; cross-library speedup vs randomForestSRC
+is now anchored on real-cohort matched-pair benchmarks (CHF n=75k,
+SEER n=238k) instead of synthetic Gaussian data.
+
+### Added
+
+- `predict_oob_risk()` and `oob_score()` on `CompetingRiskForest`,
+  exposing the existing per-tree OOB infrastructure for out-of-bag risk
+  prediction and OOB-based hyperparameter selection (no inner CV
+  required). Drops fits-per-candidate from 3 to 1 in forest-internal
+  hyperparameter tuning, with outer-val C-index equivalent to 3-fold CV
+  within ±0.001 across folds.
+- Real-cohort matched-pair benchmark harnesses:
+  - SEER breast cancer 2010–2015, n=238 057 / p=17, paired with rfSRC
+    (`validation/comparisons/seer_path_b.py`,
+    `_seer_path_b_rfsrc.R`, `validation/gen_seer_breast.py`,
+    `validation/comparisons/SEER_README.md`).
+  - n75k path-b matched-pair (CHF cohort, n=75 278 / p=58),
+    reproducible across mac M4 / i7-WSL2 / HPC Xeon.
+- `bench/` subtree: aligned vs-rfSRC reference benchmark scripts
+  (R + Python) and results CSV.
+- Scaling-curve figure (`docs/figures/scaling_curve.svg`) plus
+  reproducible generator (`validation/figures/scaling_curve.py`).
+- Profiling helper `validation/profile_fit.py` (RSS + wall + per-stage
+  timing).
+- Tests: `test_estimators.py` (sklearn estimator interface) and
+  `test_oob_predict_score.py` (OOB API contract).
+- `CITATION.cff` for canonical citation metadata.
+
+### Changed
+
+- Per-leaf Aalen–Johansen prediction is now vectorized — eliminates the
+  previous ntree cliff at large forests. Single-machine fit on the
+  partner CHF feature-selection workload is ~6–7× faster than 0.1.2
+  with bit-identical outputs (validated fold-5 outer-val C-index
+  unchanged at 0.8650 to four decimal places).
+- Cross-library perf claim revised to honest real-data band. README
+  headline now reads "10–22× faster than randomForestSRC on real
+  EHR-shaped data" with per-cohort breakdown (CHF 14–22× across three
+  machines; SEER 11.6× on HPC). The previous synthetic-Gaussian
+  ~200–375× headline is supplementary; that workload doesn't represent
+  clinical-EHR feature mixes.
+- README split into a tight homepage + `docs/benchmarks.md` for the
+  deep tables.
+- Project status bumped pre-alpha → alpha
+  (`Development Status :: 3 - Alpha`).
+
+### Fixed
+
+- pyproject `description` field updated from the stale "4.5–6× faster"
+  tagline to match the current README headline (same bug class as the
+  v0.1.1 README fix — corrected at the source this time).
+- Validation scripts pass CI ruff lint (`seer_path_b.py`,
+  `gen_seer_breast.py`).
+
 ## [0.1.2] — 2026-04-28
 
 ### Changed
