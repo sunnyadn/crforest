@@ -10,7 +10,7 @@ scales to n = 10⁶ on a consumer desktop in ~1 min, scikit-learn-compatible.
 Designed to replace the Python → R workflow split that applied
 researchers currently endure for competing-risks survival analysis.
 
-> **Status: alpha (v0.1).** API and internals may change before v1.0.
+> **Status: alpha.** API and internals may change before v1.0.
 
 ## Highlights
 
@@ -173,8 +173,8 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
   title     = {{crforest: competing-risks random survival forests for Python}},
   year      = {2026},
   publisher = {Zenodo},
-  version   = {0.1.2},
-  doi       = {10.5281/zenodo.19876283},
+  version   = {0.2.0},
+  doi       = {10.5281/zenodo.19984110},
   url       = {https://doi.org/10.5281/zenodo.19876282},
 }
 ```

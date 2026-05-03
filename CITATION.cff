@@ -8,16 +8,16 @@ abstract: >-
   Breiman permutation variable importance, and bit-identical
   reproducibility with randomForestSRC.
 type: software
-version: 0.1.2
-date-released: 2026-04-29
-doi: 10.5281/zenodo.19876283
+version: 0.2.0
+date-released: 2026-05-02
+doi: 10.5281/zenodo.19984110
 identifiers:
   - type: doi
     value: 10.5281/zenodo.19876282
     description: Concept DOI (always resolves to latest version)
   - type: doi
-    value: 10.5281/zenodo.19876283
-    description: Version DOI (v0.1.2)
+    value: 10.5281/zenodo.19984110
+    description: Version DOI (v0.2.0)
 url: https://github.com/sunnyadn/crforest
 repository-code: https://github.com/sunnyadn/crforest
 repository-artifact: https://pypi.org/project/crforest/
