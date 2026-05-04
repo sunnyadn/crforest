@@ -1,0 +1,12 @@
+{
+  "dataset": "follic",
+  "ntree": 100,
+  "seed": 42,
+  "splitrule": "logrankCR",
+  "ranking": ["age", "clinstg", "hgb", "ch", "rt"],
+  "mean_min_depth": [0.44, 1.04, 2.16, 2.24, 12.25],
+  "threshold": 1.6272,
+  "selected": ["age", "clinstg"],
+  "rfsrc_version": "3.6.2",
+  "note": "var.select(method='md') renamed to max.subtree(max.order=1) in rfSRC >= 3.x"
+}
