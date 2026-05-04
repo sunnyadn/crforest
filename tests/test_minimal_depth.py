@@ -164,3 +164,27 @@ def test_tree_mode_coverage():
     assert isinstance(f_ref.trees_[0], RefTreeNode)
     assert list(df_ref.columns) == cols
     assert len(df_ref) == f_ref.n_features_in_
+
+
+def test_conservative_selects_subset_of_default():
+    forest = _fit(seed=3)
+    sel_default = set(forest.minimal_depth(conservative=False).query("selected").feature.tolist())
+    sel_strict = set(forest.minimal_depth(conservative=True).query("selected").feature.tolist())
+    assert sel_strict.issubset(sel_default)
+
+
+def test_return_extra_columns():
+    forest = _fit(seed=4)
+    df = forest.minimal_depth(return_extra=True)
+    assert list(df.columns) == [
+        "feature",
+        "mean_min_depth",
+        "threshold",
+        "selected",
+        "min_depth_q25",
+        "min_depth_q75",
+        "frac_trees_used",
+    ]
+    # quartiles bounded by mean_min_depth ordering invariants
+    assert (df["min_depth_q25"] <= df["min_depth_q75"]).all()
+    assert ((df["frac_trees_used"] >= 0.0) & (df["frac_trees_used"] <= 1.0)).all()
