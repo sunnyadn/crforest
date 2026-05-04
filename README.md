@@ -108,8 +108,10 @@ and per-feature usage rates across trees.
 
 Note on rfSRC compatibility: this implements the paper's forest-averaged
 threshold (Section 3); `randomForestSRC::max.subtree` defaults to a
-tree-averaged threshold, so numeric threshold values will differ even
-under matched fit configurations. Variable rankings tend to agree.
+tree-averaged threshold, so the threshold *scalar* differs. Per-feature
+mean minimal depth values are bit-equivalent under matched fit config
+(`equivalence='rfsrc', bootstrap=False, min_samples_split=2*nodesize,
+min_samples_leaf=1, max_depth=None`).
 
 See [docs/quickstart.md](docs/quickstart.md) for the full walkthrough — data
 format, prediction shapes, cross-validation, GPU, and migrating from rfSRC.

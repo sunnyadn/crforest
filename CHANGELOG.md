@@ -25,11 +25,16 @@ feature (SUN-42); ships ahead of SHAP support (SUN-43).
   different numeric threshold; variable rankings tend to agree.
 - Works on all three tree backends (default `FlatTree`,
   `equivalence='rfsrc'` `HistTreeNode`, `mode='reference'` `RefTreeNode`).
-- A pinned cross-library sanity test on the `follic` dataset confirms
-  ranking agreement with rfSRC under matched stopping/bootstrap config
-  (`tests/fixtures/rfsrc_var_select_follic.json`); numeric mean-depth
-  agreement is not asserted, see test docstring for the residual-cause
-  analysis.
+- Bit-equivalent ranking + per-feature mean minimal depth values vs
+  `randomForestSRC::max.subtree(max.order=1)` under `equivalence='rfsrc'`
+  with matched fit config (`bootstrap=False`, `min_samples_split=2*nodesize`,
+  `min_samples_leaf=1`, `max_depth=None`). Verified on the bundled `follic`
+  dataset (oracle: `tests/fixtures/rfsrc_var_select_follic.json`); per-tree
+  trees are bit-identical at ntree=100. Note: the threshold *scalar* differs
+  because crforest implements the paper's forest-averaged threshold
+  (Section 3) while rfSRC defaults to tree-averaged; rankings agree.
+- Known limitation: `bootstrap=True` retains a residual ~0.003 p95 ΔCIF
+  (RNG stream B shift); SUN-44 tracks the fix.
 
 ## [0.2.0] — 2026-05-02
 

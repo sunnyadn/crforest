@@ -125,17 +125,33 @@ class CompetingRiskForest(BaseEstimator):
         (n≲500) prefer ``50`` or ``None``: undersampling dominates
         coarsening loss when there are few unique event times.
     equivalence : {None, "rfsrc"}, default=None
-        Preset for cross-library predictive alignment. ``"rfsrc"`` flips
-        ``rng_mode="rfsrc_aligned"`` and disables time-grid coarsening
-        (``split_ntime=None``); the resulting fit pairs with
-        ``randomForestSRC::rfsrc(bootstrap="by.user", samp=forest.inbag_)``
-        to reach the Z-cell numerical floor (~0.01-0.07 cross_p95_cif on
-        pbc/hd/follic/synthetic, ntree=100; see ``project_phase1c_rng_port``
-        memory and validation/alignment/mode_vs_perf_aligned.py). Costs
-        ~2-3x fit time vs the default numpy RNG path; default leaves the
-        fast path on for users who don't need rfSRC parity. Requires an
-        explicit ``random_state``. Conflicts with explicit ``rng_mode`` /
-        ``split_ntime`` raise at fit time.
+        Preset for cross-library predictive alignment. ``"rfsrc"`` sets
+        ``rng_mode="rfsrc_aligned"``, disables split-scoring time-grid
+        coarsening (``split_ntime=None``), and removes the ``time_grid``
+        cap so all unique event times are used — matching rfSRC's default
+        behaviour. Costs ~2-3x fit time vs the default numpy RNG path.
+        Requires an explicit ``random_state``. Conflicts with explicit
+        ``rng_mode`` / ``split_ntime`` raise at fit time.
+
+        To achieve **bit-identical trees** vs rfSRC under ``bootstrap=False``,
+        use these parameter mappings::
+
+            rfSRC parameter       crforest parameter
+            -----------------     --------------------------------
+            nodesize=K         -> min_samples_split=2*K, min_samples_leaf=1
+            samp=matrix(1L,...) -> bootstrap=False
+            ntime=0            -> handled internally (all event times used)
+            (no max-depth)     -> max_depth=None
+
+        rfSRC's ``nodesize`` is a parent-min-size constraint: both children
+        must reach ``K`` observations.  crforest matches this with
+        ``min_samples_split=2*K`` (guarantees each child can reach K) and
+        ``min_samples_leaf=1`` (removes crforest's own child-size floor).
+
+        Known limitation: under ``bootstrap=True`` a residual ~0.003 p95
+        ΔCIF persists because rfSRC consumes an additional RNG stream during
+        bootstrap book-keeping (SUN-44 tracks the Phase 1d fix). For
+        bit-identity, set ``bootstrap=False``.
     device : {"auto", "cpu", "cuda"}, default="auto"
         Compute backend for the flat-tree path. In v0.1, ``"auto"`` resolves
         to ``"cpu"`` — the cuda backend is shipped as a preview and is
@@ -204,10 +220,14 @@ class CompetingRiskForest(BaseEstimator):
         if self.splitrule not in ("logrankCR", "logrank"):
             raise ValueError(f"splitrule must be 'logrankCR' or 'logrank'; got {self.splitrule!r}")
         # Resolve `equivalence` preset into the per-fit effective rng_mode /
-        # split_ntime. Validates against explicit conflicting values; the
-        # public attributes stay untouched so a second .fit() with the same
-        # constructor args is reproducible.
-        self._rng_mode_eff_, self._split_ntime_eff_ = self._resolve_equivalence()
+        # split_ntime / time_grid_max. Validates against explicit conflicting
+        # values; the public attributes stay untouched so a second .fit() with
+        # the same constructor args is reproducible.
+        (
+            self._rng_mode_eff_,
+            self._split_ntime_eff_,
+            self._time_grid_max_eff_,
+        ) = self._resolve_equivalence()
         if self.nsplit is None:
             self._resolved_nsplit_ = 10 if self.mode == "default" else 0
         else:
@@ -287,7 +307,12 @@ class CompetingRiskForest(BaseEstimator):
         n = X.shape[0]
         self.bin_edges_ = fit_bin_edges(X, n_bins=self.n_bins)
         X_binned = apply_bins(X, self.bin_edges_)
-        self.time_grid_ = fit_time_grid(time, event, max_points=self.time_grid)
+        # Under equivalence='rfsrc', _time_grid_max_eff_ is None → no cap on the
+        # event-time grid (rfSRC uses all unique event times). A cap here would
+        # produce coarser split candidates → different best splits → non-identical
+        # trees.  For the normal path, _time_grid_max_eff_ == self.time_grid (an int).
+        _tg_max = self._time_grid_max_eff_ if self._time_grid_max_eff_ is not None else 2**31
+        self.time_grid_ = fit_time_grid(time, event, max_points=_tg_max)
         self.unique_times_ = self.time_grid_
         n_time_bins_full = len(self.time_grid_)
         t_idx_full = np.clip(
@@ -480,10 +505,19 @@ class CompetingRiskForest(BaseEstimator):
             return "cuda"
         return "cpu"
 
-    def _resolve_equivalence(self) -> tuple[str, int | None]:
-        """Resolve the ``equivalence`` preset into effective rng_mode + split_ntime."""
+    def _resolve_equivalence(self) -> tuple[str, int | None, int | None]:
+        """Resolve the ``equivalence`` preset into effective rng_mode + split_ntime + time_grid_max.
+
+        Returns
+        -------
+        rng_mode_eff : str
+        split_ntime_eff : int or None
+        time_grid_max_eff : int or None
+            Maximum grid points passed to ``fit_time_grid``. ``None`` means no cap
+            (use all unique event times), which rfSRC does by default.
+        """
         if self.equivalence is None:
-            return self.rng_mode, self.split_ntime
+            return self.rng_mode, self.split_ntime, self.time_grid
         if self.equivalence != "rfsrc":
             raise ValueError(f"equivalence must be None or 'rfsrc'; got {self.equivalence!r}")
         if self.rng_mode not in ("numpy", "rfsrc_aligned"):
@@ -498,7 +532,9 @@ class CompetingRiskForest(BaseEstimator):
                 "so the preset can disable time-grid coarsening; "
                 f"got split_ntime={self.split_ntime!r}"
             )
-        return "rfsrc_aligned", None
+        # None = no cap: rfSRC uses all unique event times; cap to 200 would cause
+        # coarser splits → different best-split decisions → non-identical trees.
+        return "rfsrc_aligned", None, None
 
     def _sample_indices(self, rng: np.random.RandomState, n: int) -> tuple[np.ndarray, np.ndarray]:
         """Draw bootstrap and out-of-bag indices for one tree.

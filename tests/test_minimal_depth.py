@@ -318,61 +318,39 @@ def test_rfsrc_var_select_match_follic():
         n_estimators=oracle["ntree"],
         equivalence="rfsrc",
         random_state=oracle["seed"],
-        min_samples_split=15,  # match rfSRC nodesize=15 (parent-min stopping)
-        min_samples_leaf=1,  # rfSRC has no child-min constraint
-        bootstrap=False,  # match rfSRC samp=matrix(1L,...) deterministic full bootstrap
+        min_samples_split=30,  # rfSRC nodesize=15 → min_samples_split=2*15 (see equivalence docstring)
+        min_samples_leaf=1,  # remove crforest child-min floor; rfSRC has none
+        bootstrap=False,  # match rfSRC samp=matrix(1L,...) deterministic full-data fit
         max_depth=None,  # rfSRC has no max-depth cap by default
         n_jobs=1,
     ).fit(X, y)
     # Inject feature names so minimal_depth() uses the oracle's column names
     forest.feature_names_in_ = feature_cols  # type: ignore[attr-defined]
 
-    # Cross-library sanity check: do crforest's minimal-depth selections
-    # agree with rfSRC's max.subtree on the same dataset, under semantically
-    # matched fit configurations?
+    # Bit-equivalent trees vs rfSRC under matched config + bootstrap=False:
+    #   crforest min_samples_split=2K, min_samples_leaf=1  matches  rfSRC nodesize=K
+    #   crforest bootstrap=False                           matches  rfSRC samp=matrix(1L,...)
+    #   crforest equivalence='rfsrc' (sets time-grid + RNG mode)
     #
-    # What this test asserts:
-    #   1. The top-2 features (the strong signal: age, clinstg) rank identically
-    #   2. The "selected" set (mean_min_depth ≤ threshold) has Jaccard ≥ 0.6
-    #      with rfSRC's $topvars
+    # Per-feature mean_min_depth values must match exactly (atol=1e-9). Threshold
+    # scalar value will differ between crforest (paper's forest-averaged, Section 3)
+    # and rfSRC (tree-averaged); only crforest's threshold is asserted via the
+    # `selected` column in other tests.
     #
-    # What this test does NOT assert:
-    #   - Strict full-ranking equivalence. Under matched stopping/bootstrap
-    #     config, ch and hgb (positions 3-4 in both implementations) have
-    #     very close mean depths (~2.1 vs ~2.2) and may swap order.
-    #   - Numeric mean_min_depth equality. crforest implements the paper's
-    #     forest-averaged threshold (Ishwaran 2010 Section 3); rfSRC defaults
-    #     to tree-averaged. Threshold scalars differ; per-variable empirical
-    #     means differ slightly due to residual `equivalence='rfsrc'` tree
-    #     non-identity (see project memory equivalence_preset_launch).
-    #
-    # Configuration notes:
-    #   crforest min_samples_split=N, min_samples_leaf=1  matches  rfSRC nodesize=N
-    #     (rfSRC's nodesize is a parent-min constraint with no child-min floor;
-    #      crforest's min_samples_leaf is a child-min constraint, so the
-    #      semantic match requires min_samples_split=N + min_samples_leaf=1.)
-    #   crforest bootstrap=False                          matches  rfSRC samp=matrix(1L,...)
-    #   crforest max_depth=None                           matches  rfSRC default (no cap)
-    #
-    # SUN-44 tracks the follow-up investigation for full numeric reconciliation
-    # (residual causes: at least one untraced rfSRC stopping behavior + tree-
-    # build RNG non-identity).
+    # Known limitation: under bootstrap=True, residual ~0.003 p95 ΔCIF persists
+    # from rfSRC's stream B shift during bootstrap book-keeping. SUN-44 tracks
+    # the Phase 1d RNG fix.
     df = forest.minimal_depth()
     got_ranking = df["feature"].tolist()
-    got_selected = set(df.loc[df["selected"], "feature"].tolist())
-    oracle_selected = set(oracle["selected"])
+    got_md = df["mean_min_depth"].values
+    exp_md = np.asarray(oracle["mean_min_depth"], dtype=np.float64)
 
-    # Top-2 features (the strong signal: age + clinstg) match exactly
-    assert got_ranking[:2] == oracle["ranking"][:2], (
-        f"top-2 ranking diverged:\n  got: {got_ranking[:2]}\n  exp: {oracle['ranking'][:2]}"
+    assert got_ranking == oracle["ranking"], (
+        f"ranking diverged:\n  got: {got_ranking}\n  exp: {oracle['ranking']}"
     )
-
-    # Selected sets must overlap substantially (Jaccard ≥ 0.6 — small p=5 dataset)
-    intersection = got_selected & oracle_selected
-    union = got_selected | oracle_selected
-    jaccard = len(intersection) / max(len(union), 1)
-    assert jaccard >= 0.6, (
-        f"selected-set Jaccard {jaccard:.2f} < 0.6:\n"
-        f"  crforest selected: {sorted(got_selected)}\n"
-        f"  rfSRC selected:    {sorted(oracle_selected)}"
+    np.testing.assert_allclose(
+        got_md,
+        exp_md,
+        atol=1e-9,
+        err_msg=(f"mean_min_depth diverged:\n  got: {got_md}\n  exp: {exp_md}"),
     )

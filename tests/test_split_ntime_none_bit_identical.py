@@ -16,6 +16,7 @@ baseline. History:
   - Plan 2 Task 6 (device arg):   ``08cb8cd4..`` / 14801532 bytes (+43, ``device`` ctor attr + ``_effective_device_`` post-fit)
   - Plan 2 Task 9d.5 (pin cpu):   ``e7930718..`` / 14801527 bytes (-5, ctor pinned ``device='cpu'`` so the test is hardware-independent — ``device='auto'`` resolves to cuda when cupy is installed and produces a different pickle by design)
   - Surv y_train_oob field order: ``70efbe29..`` / 14801527 bytes (0 byte delta, struct layout swap — ``_y_train_oob_`` field order changed from ``[("time", float64), ("event", int64)]`` to sksurv-canonical ``[("event", int64), ("time", float64)]`` after the ``Surv.from_arrays`` simplification)
+  - SUN-42 time-grid fix:         ``ff50915f..`` / 14801551 bytes (+24, ``_time_grid_max_eff_`` int added as fitted attr by ``_resolve_equivalence``; tree-building unchanged on default path)
 
 Future changes that affect ``split_ntime=None`` tree-building behavior
 will drift this digest and flag for investigation.
@@ -30,8 +31,8 @@ import numpy as np
 
 from crforest import CompetingRiskForest
 
-ANCHOR_SHA256 = "70efbe29711e53b35137f5a9ee1f7dd7e34719ebf3bffde0c75d2bd85d536110"
-ANCHOR_PICKLE_BYTES = 14801527
+ANCHOR_SHA256 = "ff50915f2e2dc9e6b80efbe93dc41539596ea36bdd1ccfb98322c8fc5f948d2b"
+ANCHOR_PICKLE_BYTES = 14801551
 
 
 def test_split_ntime_none_matches_anchor_digest() -> None:
