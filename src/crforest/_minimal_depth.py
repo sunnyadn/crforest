@@ -127,8 +127,33 @@ def _ishwaran_expected_md(
     max_depth_T: int,
     n_features: int,
 ) -> float:
-    """Expected minimal depth of any single variable under the null."""
-    raise NotImplementedError
+    """Expected minimal depth of any single variable under the null.
+
+    Under the null hypothesis of no association, every internal node picks
+    one of ``p = n_features`` features uniformly. With ``L(d)`` internal
+    nodes at depth ``d``, the probability that a specific variable ``V`` is
+    *not* picked at any node up to and including depth ``k`` is
+    ``(1 - 1/p) ** cumL[k]``. Hence:
+
+        E[md(V)] = sum_{k=0..D_T} P(md > k)
+                 = sum_{k=0..D_T} (1 - 1/p) ** cumL[k]
+
+    Cumulative ``cumL`` is constant past the deepest internal node, so
+    trailing depths contribute the "never used" mass ``(1 - 1/p)^total``.
+    """
+    p = int(n_features)
+    if p <= 1:
+        return 0.0
+    L = np.asarray(internal_nodes_per_depth, dtype=np.int64)
+    D_T = int(max_depth_T)
+    cumL_full = np.zeros(D_T + 1, dtype=np.int64)
+    n_L = L.shape[0]
+    if n_L > 0:
+        cumL_full[:n_L] = np.cumsum(L)
+        cumL_full[n_L:] = cumL_full[n_L - 1]
+    log1m = np.log1p(-1.0 / p)
+    P_greater = np.exp(cumL_full.astype(np.float64) * log1m)
+    return float(P_greater.sum())
 
 
 def compute_minimal_depth(

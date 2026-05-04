@@ -56,3 +56,33 @@ def test_walker_flat_tree_finds_root_split():
     # Every value is in [0, D_T + 1]
     assert (res.min_depth_per_feature >= 0).all()
     assert (res.min_depth_per_feature <= res.max_depth + 1).all()
+
+
+def test_ishwaran_threshold_handcomputed():
+    """Depth-2 toy tree: 1 internal node at depth 0, 2 internals at depth 1.
+
+    p = 4, so (1 - 1/p) = 3/4. Cumulative internal counts cumL = [1, 3, 3].
+    P(md > 0) = (3/4)^1 = 0.75
+    P(md > 1) = (3/4)^3 = 27/64 = 0.421875
+    P(md > 2) = (3/4)^3 = 27/64 = 0.421875
+    E[md] = 0.75 + 0.421875 + 0.421875 = 1.59375
+
+    Sanity: P(md=0)=0.25, P(md=1)=0.328125, P(md=2)=0, P(md=3)=0.421875
+            -> 0*0.25 + 1*0.328125 + 2*0 + 3*0.421875 = 1.59375
+    """
+    from crforest._minimal_depth import _ishwaran_expected_md
+
+    L = np.array([1, 2], dtype=np.int64)
+    expected = 1.59375
+    got = _ishwaran_expected_md(L, max_depth_T=2, n_features=4)
+    assert abs(got - expected) < 1e-12, f"got {got}, expected {expected}"
+
+
+def test_ishwaran_threshold_pure_stump():
+    """Pure stump (D_T = 0, no internals): expected md = 1.0."""
+    from crforest._minimal_depth import _ishwaran_expected_md
+
+    L = np.array([], dtype=np.int64)
+    got = _ishwaran_expected_md(L, max_depth_T=0, n_features=4)
+    # cumL_full = [0]; P(md>0) = (3/4)^0 = 1.0; sum = 1.0
+    assert abs(got - 1.0) < 1e-12
