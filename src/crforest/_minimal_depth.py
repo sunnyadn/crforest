@@ -181,6 +181,9 @@ def _forest_averaged_threshold(walk_results: list[WalkResult], n_features: int) 
        Trees with no nodes at depth d contribute 0.
     2. D_bar = mean across trees of D_T, rounded to nearest int.
     3. Plug into _ishwaran_expected_md once.
+
+    Note: ``D_bar`` uses Python's ``round()`` (round-half-to-even) on the
+    mean tree depth. Half-integer means like 2.5 round to 2, not 3.
     """
     n_trees = len(walk_results)
     if n_trees == 0:
@@ -229,6 +232,11 @@ def compute_minimal_depth(
     pandas.DataFrame
         Sorted ascending by ``mean_min_depth``. Columns:
         ``feature``, ``mean_min_depth``, ``threshold``, ``selected``.
+
+    Note: rfSRC's max.subtree defaults to a tree-averaged threshold; this
+    function implements the paper's forest-averaging (Section 3), so
+    numeric thresholds will differ even with ``equivalence='rfsrc'``.
+    Variable rankings tend to agree.
     """
     if threshold != "md":
         raise ValueError(

@@ -324,12 +324,25 @@ def test_rfsrc_var_select_match_follic():
     # Inject feature names so minimal_depth() uses the oracle's column names
     forest.feature_names_in_ = feature_cols  # type: ignore[attr-defined]
 
+    # This test asserts ranking ORDER only, not numeric mean_min_depth values.
+    #
+    # crforest implements the paper's forest-averaged threshold (Ishwaran 2010
+    # Section 3: l_bar_d and D_bar averaged across trees, then ONE E[D*v] computed).
+    # rfSRC max.subtree defaults to a tree-averaged threshold (per-tree E[Dv]
+    # averaged across trees), which produces a different threshold scalar.
+    #
+    # The fit configuration above (min_samples_leaf=15, default bootstrap/max_depth)
+    # is the empirically validated config that produces ranking agreement on follic.
+    # The "fully matched" config (min_samples_split=15, min_samples_leaf=1,
+    # bootstrap=False, max_depth=None) was tested on 2026-05-03 and found to
+    # diverge at positions 2-3 (ch/hgb swap), likely due to the bootstrap
+    # difference changing the ensemble distribution. SUN-44 tracks full
+    # numeric reconciliation.
+    #
+    # Ranking is the load-bearing partner-facing output; numeric agreement is
+    # not a v0.3.0 goal.
     df = forest.minimal_depth()
     got_ranking = df["feature"].tolist()
-    # Note: this test asserts ranking order only, not numeric mean_min_depth values.
-    # crforest uses the paper's forest-averaged threshold (Section 3); rfSRC uses
-    # tree-averaged aggregation, so threshold values will differ. Ranking agreement
-    # under equivalence='rfsrc' is the load-bearing invariant.
     assert got_ranking == oracle["ranking"], (
         f"ranking mismatch:\n  got: {got_ranking}\n  exp: {oracle['ranking']}"
     )

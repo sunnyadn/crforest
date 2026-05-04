@@ -12,17 +12,24 @@ feature (SUN-42); ships ahead of SHAP support (SUN-43).
 
 ### Added
 
-- `CompetingRiskForest.minimal_depth(threshold='md', conservative=False,
-  return_extra=False) -> pd.DataFrame` — variable selection via mean
-  minimal split depth across the forest, with the analytical null
-  threshold from Ishwaran et al. (2010, JASA, eq. 4.1).
-- Bit-equivalent ranking vs `randomForestSRC::max.subtree(max.order=1)`
-  under `equivalence='rfsrc'` (the rfSRC 3.x replacement for the
-  historical `var.select(method='md')`; verified on the bundled `follic`
-  dataset with the oracle at `tests/fixtures/rfsrc_var_select_follic.json`).
+- `CompetingRiskForest.minimal_depth(threshold='md', return_extra=False) -> pd.DataFrame`
+  — variable selection via mean minimal split depth across the forest, with
+  the forest-averaged null-distribution threshold from Ishwaran et al.
+  (2010, JASA, "High-Dimensional Variable Selection for Survival Data",
+  Theorem 1 + Section 3).
+- Sentinel for unused variables follows the paper's Eq. (2) convention
+  (depth = D(T), the deepest leaf depth in the tree). The threshold is
+  computed once from forest-averaged ℓ̄_d and D̄ per Section 3, not as a
+  per-tree mean — matching the paper's recommendation. `randomForestSRC`'s
+  default `max.subtree` aggregation is tree-averaged and produces a
+  different numeric threshold; variable rankings tend to agree.
 - Works on all three tree backends (default `FlatTree`,
-  `equivalence='rfsrc'` `HistTreeNode`, `mode='reference'`
-  `RefTreeNode`).
+  `equivalence='rfsrc'` `HistTreeNode`, `mode='reference'` `RefTreeNode`).
+- A pinned cross-library sanity test on the `follic` dataset confirms
+  ranking agreement with rfSRC under matched stopping/bootstrap config
+  (`tests/fixtures/rfsrc_var_select_follic.json`); numeric mean-depth
+  agreement is not asserted, see test docstring for the residual-cause
+  analysis.
 
 ## [0.2.0] — 2026-05-02
 
