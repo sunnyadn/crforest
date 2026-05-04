@@ -194,14 +194,17 @@ def compute_minimal_depth(
     feature_names = forest._importance_feature_names()
     trees = forest.trees_
     n_trees = len(trees)
-    assert n_trees > 0, "fitted forest must have at least one tree"
+    if n_trees == 0:
+        raise ValueError("forest has no trees; refit with n_estimators >= 1")
 
     md_matrix = np.empty((n_trees, p), dtype=np.int32)
     expected_md = np.empty(n_trees, dtype=np.float64)
+    per_tree_sentinel_arr = np.empty(n_trees, dtype=np.int64)
     for i, tree in enumerate(trees):
         res = _walk_min_depth(tree, p)
         md_matrix[i] = res.min_depth_per_feature
         expected_md[i] = _ishwaran_expected_md(res.internal_nodes_per_depth, res.max_depth, p)
+        per_tree_sentinel_arr[i] = res.max_depth + 1
 
     mean_md = md_matrix.mean(axis=0)
     thr = float(expected_md.mean())
@@ -210,29 +213,15 @@ def compute_minimal_depth(
         thr = thr - 2.0 * se
     selected = mean_md <= thr
 
-    out = (
-        pd.DataFrame(
-            {
-                "feature": feature_names,
-                "mean_min_depth": mean_md.astype(np.float64),
-                "threshold": np.full(p, thr, dtype=np.float64),
-                "selected": selected,
-            }
-        )
-        .sort_values("mean_min_depth", kind="mergesort")
-        .reset_index(drop=True)
-    )
-
+    data: dict = {
+        "feature": feature_names,
+        "mean_min_depth": mean_md.astype(np.float64),
+        "threshold": np.full(p, thr, dtype=np.float64),
+        "selected": selected,
+    }
     if return_extra:
-        q25 = np.quantile(md_matrix, 0.25, axis=0)
-        q75 = np.quantile(md_matrix, 0.75, axis=0)
-        # Per-tree sentinel = D_T + 1 = max value in that tree's row
-        per_tree_sentinel = md_matrix.max(axis=1, keepdims=True)
-        frac_used = (md_matrix < per_tree_sentinel).mean(axis=0)
-        # Reorder extras to match the sorted output
-        name_to_pos = {n: i for i, n in enumerate(feature_names)}
-        orig_idx = np.array([name_to_pos[n] for n in out["feature"]], dtype=np.int64)
-        out["min_depth_q25"] = q25[orig_idx]
-        out["min_depth_q75"] = q75[orig_idx]
-        out["frac_trees_used"] = frac_used[orig_idx]
+        data["min_depth_q25"] = np.quantile(md_matrix, 0.25, axis=0)
+        data["min_depth_q75"] = np.quantile(md_matrix, 0.75, axis=0)
+        data["frac_trees_used"] = (md_matrix < per_tree_sentinel_arr[:, None]).mean(axis=0)
+    out = pd.DataFrame(data).sort_values("mean_min_depth", kind="mergesort").reset_index(drop=True)
     return out
