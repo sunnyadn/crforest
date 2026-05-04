@@ -9,4 +9,4 @@ def test_package_imports():
 
 def test_version_matches_expected():
     # Pinned to the current release version. Bump when releasing.
-    assert crforest.__version__ == "0.1.0"
+    assert crforest.__version__ == "0.3.0"

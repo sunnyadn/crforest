@@ -8,7 +8,7 @@ from crforest.metrics import (
     concordance_index_uno_cr,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "CompetingRiskForest",

@@ -8,8 +8,8 @@ abstract: >-
   Breiman permutation variable importance, and bit-identical
   reproducibility with randomForestSRC.
 type: software
-version: 0.2.0
-date-released: 2026-05-02
+version: 0.3.0
+date-released: 2026-05-03
 doi: 10.5281/zenodo.19984110
 identifiers:
   - type: doi

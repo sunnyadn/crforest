@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-05-03
+
+Adds Ishwaran-style minimal-depth variable selection. Partner-blocked
+feature (SUN-42); ships ahead of SHAP support (SUN-43).
+
+### Added
+
+- `CompetingRiskForest.minimal_depth(threshold='md', conservative=False,
+  return_extra=False) -> pd.DataFrame` — variable selection via mean
+  minimal split depth across the forest, with the analytical null
+  threshold from Ishwaran et al. (2010, JASA, eq. 4.1).
+- Bit-equivalent ranking vs `randomForestSRC::max.subtree(max.order=1)`
+  under `equivalence='rfsrc'` (the rfSRC 3.x replacement for the
+  historical `var.select(method='md')`; verified on the bundled `follic`
+  dataset with the oracle at `tests/fixtures/rfsrc_var_select_follic.json`).
+- Works on all three tree backends (default `FlatTree`,
+  `equivalence='rfsrc'` `HistTreeNode`, `mode='reference'`
+  `RefTreeNode`).
+
 ## [0.2.0] — 2026-05-02
 
 Performance + scope expansion. Single-machine fit is ~6–7× faster than

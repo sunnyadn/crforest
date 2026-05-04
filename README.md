@@ -90,6 +90,23 @@ vimp = forest.compute_importance(random_state=42)
 print(vimp.sort_values("composite_vimp", ascending=False).head())
 ```
 
+### Variable selection
+
+Rank features by Ishwaran's minimal-depth criterion and apply the
+analytical null-distribution threshold (equivalent to
+`randomForestSRC::max.subtree(max.order=1)`, the rfSRC 3.x replacement
+for the historical `var.select(method='md')`):
+
+```python
+forest = CompetingRiskForest(n_estimators=200, random_state=0).fit(X, time, event)
+vs = forest.minimal_depth()
+selected = vs.loc[vs["selected"], "feature"].tolist()
+```
+
+Pass `conservative=True` for a stricter cut (subtracts 2 SE from the
+threshold), or `return_extra=True` to additionally inspect quartiles and
+per-feature usage rates.
+
 See [docs/quickstart.md](docs/quickstart.md) for the full walkthrough — data
 format, prediction shapes, cross-validation, GPU, and migrating from rfSRC.
 
