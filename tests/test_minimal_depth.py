@@ -137,3 +137,30 @@ def test_pure_stump_edge_case():
     # Edge-case: thr = 1.0 too, so selected = mean_md <= thr is True everywhere.
     # This is uninformative output, but mathematically consistent.
     assert df["selected"].all()
+
+
+def test_tree_mode_coverage():
+    """Works on default FlatTree, equivalence='rfsrc' (HistTreeNode), mode='reference' (RefTreeNode)."""
+    from crforest._hist_tree import HistTreeNode
+    from crforest._tree import RefTreeNode
+    from crforest._tree_flat import FlatTree
+
+    cols = ["feature", "mean_min_depth", "threshold", "selected"]
+
+    f_default = _fit(seed=1)
+    df_default = f_default.minimal_depth()
+    assert isinstance(f_default.trees_[0], FlatTree)
+    assert list(df_default.columns) == cols
+    assert len(df_default) == f_default.n_features_in_
+
+    f_rfsrc = _fit(seed=1, equivalence="rfsrc")
+    df_rfsrc = f_rfsrc.minimal_depth()
+    assert isinstance(f_rfsrc.trees_[0], HistTreeNode)
+    assert list(df_rfsrc.columns) == cols
+    assert len(df_rfsrc) == f_rfsrc.n_features_in_
+
+    f_ref = _fit(seed=1, mode="reference")
+    df_ref = f_ref.minimal_depth()
+    assert isinstance(f_ref.trees_[0], RefTreeNode)
+    assert list(df_ref.columns) == cols
+    assert len(df_ref) == f_ref.n_features_in_
