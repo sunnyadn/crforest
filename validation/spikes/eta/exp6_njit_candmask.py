@@ -85,7 +85,7 @@ def _make_patched_find_best_split_hist():
 
     Other paths fall through to the original.
     """
-    import crforest._hist_splits as hs
+    import comprisk._hist_splits as hs
 
     orig = hs.find_best_split_hist
     batched = hs.find_best_split_hist_batched
@@ -161,7 +161,7 @@ def _print(msg: str, fp) -> None:
 
 
 def _fit_once() -> float:
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     X, t, e = load(N, SEED)
     forest = CompetingRiskForest(
@@ -180,7 +180,7 @@ def _fit_once() -> float:
 
 
 def _warmup() -> None:
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     X, t, e = load(N, SEED)
     CompetingRiskForest(
@@ -210,8 +210,8 @@ def main() -> None:
     _print(f"[exp6] BASELINE wall = {base:6.2f}s", fp)
 
     patched_fn, orig = _make_patched_find_best_split_hist()
-    import crforest._hist_splits as hs
-    import crforest._hist_tree as ht  # also imports it
+    import comprisk._hist_splits as hs
+    import comprisk._hist_tree as ht  # also imports it
 
     hs.find_best_split_hist = patched_fn
     ht.find_best_split_hist = patched_fn

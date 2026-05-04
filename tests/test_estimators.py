@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from crforest._estimators import (
+from comprisk._estimators import (
     aalen_johansen,
     kaplan_meier_survival,
     nelson_aalen,
@@ -98,7 +98,7 @@ def test_aalen_johansen_no_events_for_cause_returns_zero():
 
 
 def test_nelson_aalen_from_counts_hand_computed():
-    from crforest._estimators import nelson_aalen_from_counts
+    from comprisk._estimators import nelson_aalen_from_counts
 
     # 5 subjects, times [0, 1, 1, 2, 2], events [1, 2, 1, 0, 1]
     # at_risk (reverse-cumsum of n_at per time): t0: 5, t1: 4, t2: 2
@@ -124,7 +124,7 @@ def test_nelson_aalen_from_counts_hand_computed():
 
 
 def test_nelson_aalen_from_counts_zero_at_risk_gives_zero_hazard():
-    from crforest._estimators import nelson_aalen_from_counts
+    from comprisk._estimators import nelson_aalen_from_counts
 
     event_counts = np.array([[0, 1, 0]], dtype=np.uint32)
     at_risk = np.array([2, 1, 0], dtype=np.uint32)
@@ -136,7 +136,7 @@ def test_nelson_aalen_from_counts_zero_at_risk_gives_zero_hazard():
 
 def test_nelson_aalen_cs_matches_sum_of_all_cause():
     """Sum of cause-specific CHFs equals all-cause NA (standard at-risk)."""
-    from crforest._estimators import nelson_aalen, nelson_aalen_cs
+    from comprisk._estimators import nelson_aalen, nelson_aalen_cs
 
     rng = np.random.default_rng(7)
     n = 80
@@ -157,7 +157,7 @@ def test_aalen_johansen_from_counts_batched_matches_per_leaf():
     """Vectorized batched AJ matches per-leaf helper bit-identical (1e-12)
     on a multi-leaf fixture with mixed at-risk profiles, parallel to the
     GPU equivalence test in test_gpu_smoke.py."""
-    from crforest._estimators import (
+    from comprisk._estimators import (
         aalen_johansen_from_counts,
         aalen_johansen_from_counts_batched,
     )
@@ -188,7 +188,7 @@ def test_aalen_johansen_from_counts_batched_matches_per_leaf():
 def test_aalen_johansen_from_counts_batched_zero_at_risk_tail():
     """Batched AJ handles zero-at-risk tail bins without divide-by-zero
     or NaN, matching the per-leaf helper exactly."""
-    from crforest._estimators import (
+    from comprisk._estimators import (
         aalen_johansen_from_counts,
         aalen_johansen_from_counts_batched,
     )
@@ -208,7 +208,7 @@ def test_aalen_johansen_from_counts_batched_zero_at_risk_tail():
 
 
 def test_nelson_aalen_cs_monotone_nondecreasing():
-    from crforest._estimators import nelson_aalen_cs
+    from comprisk._estimators import nelson_aalen_cs
 
     rng = np.random.default_rng(11)
     n = 60

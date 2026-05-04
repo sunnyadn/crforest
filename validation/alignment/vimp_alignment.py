@@ -1,9 +1,9 @@
-"""VIMP alignment: crforest.importance() vs rfSRC vimp() at paired seeds.
+"""VIMP alignment: comprisk.importance() vs rfSRC vimp() at paired seeds.
 
 Both libraries provide permutation-based variable importance, but the
 algorithms differ in detail:
 
-- crforest: ``sklearn.inspection.permutation_importance`` scored by
+- comprisk: ``sklearn.inspection.permutation_importance`` scored by
   ``concordance_index_cr`` on ``predict_risk``. Per-cause vectors,
   full-forest prediction with the permuted column, ``n_repeats``
   averaging.
@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr, spearmanr
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -56,7 +56,7 @@ def run_cell(dataset: str, seed: int, n_estimators: int, n_repeats: int, mode: s
     n_tr = len(tr)
     feat_names = [f"x{j}" for j in range(p)]
 
-    # crforest fit + VIMP
+    # comprisk fit + VIMP
     forest = CompetingRiskForest(
         n_estimators=n_estimators,
         min_samples_leaf=1,
@@ -92,7 +92,7 @@ def run_cell(dataset: str, seed: int, n_estimators: int, n_repeats: int, mode: s
             ncol=n_estimators,
         )
     # use.uno=TRUE (default since 2026-04-25): rfSRC reports Uno IPCW C-index
-    # for VIMP, matching crforest's metric (compute_uno_weights +
+    # for VIMP, matching comprisk's metric (compute_uno_weights +
     # concordance_index_uno_cr). Override with RFSRC_USE_UNO=FALSE for the
     # historical Harrell-subset baseline.
     use_uno = os.environ.get("RFSRC_USE_UNO", "TRUE").upper()
@@ -120,12 +120,12 @@ def run_cell(dataset: str, seed: int, n_estimators: int, n_repeats: int, mode: s
     # both report "performance drop after permutation" (higher = more important).
     # Empirical magnitudes line up after this — no sign flip needed.
 
-    # crforest defaults feature names to "feature_{i}"; align by position
-    # since crforest preserves column order.
+    # comprisk defaults feature names to "feature_{i}"; align by position
+    # since comprisk preserves column order.
     cr_indexed = cr_vimp.set_index("feature")
     cr_feat_order = list(cr_indexed.index)
     if len(cr_feat_order) != p:
-        raise RuntimeError(f"crforest VIMP returned {len(cr_feat_order)} features, expected {p}")
+        raise RuntimeError(f"comprisk VIMP returned {len(cr_feat_order)} features, expected {p}")
 
     # Build per-cause comparison frames. rfSRC layout:
     #   col 0 = "all" (overall), col 1 = "event.1", col 2 = "event.2", ...
@@ -177,7 +177,7 @@ def main() -> None:
         "--mode",
         choices=("oob", "holdout"),
         default="oob",
-        help="crforest VIMP mode for the comparison (default: oob)",
+        help="comprisk VIMP mode for the comparison (default: oob)",
     )
     args = parser.parse_args()
 

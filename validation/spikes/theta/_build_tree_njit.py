@@ -29,7 +29,7 @@ from __future__ import annotations
 import numpy as np
 from numba import njit
 
-from crforest._hist_splits import find_best_split_hist_batched
+from comprisk._hist_splits import find_best_split_hist_batched
 
 
 @njit(cache=True, nogil=True)

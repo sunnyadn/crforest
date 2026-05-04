@@ -14,7 +14,7 @@ import numpy as np
 def main():
     import cupy as cp
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     rng = np.random.default_rng(0)
     n, p = 100_000, 8

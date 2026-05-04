@@ -1,11 +1,11 @@
-"""Single-config crforest bench. Emits one CSV row to bench/results/results.csv.
+"""Single-config comprisk bench. Emits one CSV row to bench/results/results.csv.
 
 Usage:
-    python -m bench.run_crforest --n 60000 --p 30 --ntree 100 \\
+    python -m bench.run_comprisk --n 60000 --p 30 --ntree 100 \\
         --leaf 3 --jobs 10 --label mac-m3pro
 
 All knobs default to v0.2-canonical values; override per run. Run from the
-crforest repo root so the relative imports work.
+comprisk repo root so the relative imports work.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ def main() -> None:
         args.split = 2 * args.leaf
 
     print(
-        f"crforest | n={args.n} p={args.p} ntree={args.ntree} "
+        f"comprisk | n={args.n} p={args.p} ntree={args.ntree} "
         f"leaf={args.leaf} split={args.split} jobs={args.jobs} label={args.label}"
     )
 
@@ -66,8 +66,8 @@ def main() -> None:
         f"data ready: censor={(e == 0).mean():.1%} c1={(e == 1).mean():.1%} c2={(e == 2).mean():.1%}"
     )
 
-    from crforest import CompetingRiskForest
-    from crforest import __version__ as crf_version
+    from comprisk import CompetingRiskForest
+    from comprisk import __version__ as crf_version
 
     # Warm numba JIT so timing excludes one-shot compile cost
     warm = CompetingRiskForest(
@@ -127,12 +127,12 @@ def main() -> None:
                     "notes",
                 ]
             )
-        # crforest's effective n_jobs: -1 → os.cpu_count()
+        # comprisk's effective n_jobs: -1 → os.cpu_count()
         n_cores_used = os.cpu_count() if args.jobs == -1 else args.jobs
         w.writerow(
             [
                 datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z"),
-                "crforest",
+                "comprisk",
                 crf_version,
                 args.label,
                 n_cores_used,
@@ -140,7 +140,7 @@ def main() -> None:
                 args.p,
                 args.ntree,
                 args.leaf,
-                10,  # crforest default-mode nsplit
+                10,  # comprisk default-mode nsplit
                 args.n_bins,
                 args.splitrule,
                 round(wall, 3),

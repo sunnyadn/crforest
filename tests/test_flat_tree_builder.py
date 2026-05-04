@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from crforest._tree_flat import FlatTree
+from comprisk._tree_flat import FlatTree
 
 
 def test_flat_tree_from_arrays_constructs_root_only_leaf():
@@ -48,7 +48,7 @@ def test_flat_tree_from_arrays_validates_shape_consistency():
 
 
 def test_build_flat_tree_root_only_when_n_below_min_split():
-    from crforest._flat_tree_builder import build_flat_tree
+    from comprisk._flat_tree_builder import build_flat_tree
 
     # n=10 < min_samples_split=30 → root-only leaf.
     rng = np.random.default_rng(0)
@@ -90,7 +90,7 @@ def test_build_flat_tree_overflow_guard_produces_valid_leaves():
 
     This is a regression test for the C1 issue from Task 2 code review.
     """
-    from crforest._flat_tree_builder import build_flat_tree
+    from comprisk._flat_tree_builder import build_flat_tree
 
     rng = np.random.default_rng(0)
     n = 200
@@ -148,7 +148,7 @@ def test_build_flat_tree_overflow_guard_produces_valid_leaves():
                 ), f"orphan node detected at right_child {ri}"
 
     # Predict — must not infinite-loop.
-    from crforest._tree_flat import predict_with_flat
+    from comprisk._tree_flat import predict_with_flat
 
     cif = predict_with_flat(flat, X_binned)
     assert cif.shape == (n, 2, 10)
@@ -159,7 +159,7 @@ def test_build_flat_tree_splits_with_clear_signal():
     """Planted-signal sanity: feature 0 perfectly separates time-to-event,
     so the root split's chosen feature should be feature 0 even though
     other features are present and randomly distributed."""
-    from crforest._flat_tree_builder import build_flat_tree
+    from comprisk._flat_tree_builder import build_flat_tree
 
     n = 200
     n_features = 4
@@ -204,8 +204,8 @@ def test_build_flat_tree_within_lib_p95_stable_across_seeds():
     """Two flat-tree forests at adjacent seeds should produce CIFs within
     the same-lib seed-to-seed noise band on a small synthetic dataset.
     Acts as a within-lib stability gate for the new builder."""
-    from crforest._flat_tree_builder import build_flat_tree
-    from crforest._tree_flat import predict_with_flat
+    from comprisk._flat_tree_builder import build_flat_tree
+    from comprisk._tree_flat import predict_with_flat
 
     n = 500
     n_features = 5

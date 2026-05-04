@@ -15,7 +15,7 @@ Two sweeps:
 
 Output: /tmp/gpu_scaling_walls.parquet with one row per fit.
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra gpu --extra dev \\
        python -u validation/spikes/kappa/exp8_gpu_scaling.py \\
        2>&1 | tee /tmp/exp8_gpu_scaling.log'
@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 TRAIN_IDX = Path("/tmp/chf_2012_train_idx.txt")

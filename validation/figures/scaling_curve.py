@@ -3,13 +3,13 @@
 Two modes (one script):
 
   python validation/figures/scaling_curve.py --bench [--out walls.json]
-      Re-measures crforest walls at the n grid {5k, 10k, ..., 1M} and
+      Re-measures comprisk walls at the n grid {5k, 10k, ..., 1M} and
       writes a JSON file with mean walls per n. Run from a venv with
-      crforest installed; matplotlib is NOT required for this mode.
+      comprisk installed; matplotlib is NOT required for this mode.
 
   python validation/figures/scaling_curve.py --render [--in walls.json]
       Reads walls.json and renders an SVG. Requires matplotlib. If your
-      crforest venv lacks matplotlib, run:
+      comprisk venv lacks matplotlib, run:
           uvx --from matplotlib --with matplotlib python \\
               validation/figures/scaling_curve.py --render
 
@@ -61,7 +61,7 @@ def make_synthetic(n: int, p: int, seed: int):
 
 def child(n: int, p: int, seed: int, ntree: int):
     """Run inside a clean subprocess so peak RSS / numba caches don't bleed."""
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     X, t, e = make_synthetic(n, p, seed)
     f = CompetingRiskForest(n_estimators=ntree, n_jobs=-1, random_state=seed, device="cpu")
@@ -71,7 +71,7 @@ def child(n: int, p: int, seed: int, ntree: int):
     print("RESULT_JSON " + json.dumps({"n": n, "seed": seed, "wall": wall}), flush=True)
 
 
-def measure_crforest(ns, seeds, p, ntree):
+def measure_comprisk(ns, seeds, p, ntree):
     walls = {n: [] for n in ns}
     for n in ns:
         for seed in seeds:
@@ -93,12 +93,12 @@ def measure_crforest(ns, seeds, p, ntree):
                 if line.startswith("RESULT_JSON "):
                     row = json.loads(line[len("RESULT_JSON ") :])
                     walls[n].append(row["wall"])
-                    print(f"[crforest n={n} seed={seed}] wall={row['wall']:.2f}s", flush=True)
+                    print(f"[comprisk n={n} seed={seed}] wall={row['wall']:.2f}s", flush=True)
                     break
     return {n: float(np.mean(walls[n])) for n in ns}
 
 
-def render_svg(crforest_walls, out_path, rfsrc_walls=None):
+def render_svg(comprisk_walls, out_path, rfsrc_walls=None):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -109,8 +109,8 @@ def render_svg(crforest_walls, out_path, rfsrc_walls=None):
 
     sk_ns = sorted(SKSURV_WALLS)
     sk_ts = [SKSURV_WALLS[n] for n in sk_ns]
-    cf_ns = sorted(crforest_walls)
-    cf_ts = [crforest_walls[n] for n in cf_ns]
+    cf_ns = sorted(comprisk_walls)
+    cf_ts = [comprisk_walls[n] for n in cf_ns]
 
     ax.plot(
         sk_ns,
@@ -133,7 +133,7 @@ def render_svg(crforest_walls, out_path, rfsrc_walls=None):
             markersize=11,
             label="randomForestSRC (OMP-on, 28 threads)",
         )
-    ax.plot(cf_ns, cf_ts, "o-", color="#2E5C8A", linewidth=3.5, markersize=12, label="crforest")
+    ax.plot(cf_ns, cf_ts, "o-", color="#2E5C8A", linewidth=3.5, markersize=12, label="comprisk")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -179,7 +179,7 @@ def main():
     parser.add_argument("--ntree", type=int, default=100)
     parser.add_argument("--p", type=int, default=58)
     parser.add_argument(
-        "--bench", action="store_true", help="re-measure crforest walls and write JSON"
+        "--bench", action="store_true", help="re-measure comprisk walls and write JSON"
     )
     parser.add_argument("--render", action="store_true", help="render SVG from existing walls JSON")
     parser.add_argument("--ns", default="5000,10000,25000,50000,100000,250000,500000,1000000")
@@ -195,7 +195,7 @@ def main():
     if args.bench:
         ns = [int(s) for s in args.ns.split(",")]
         seeds = [int(s) for s in args.seeds.split(",")]
-        walls = measure_crforest(ns, seeds, args.p, args.ntree)
+        walls = measure_comprisk(ns, seeds, args.p, args.ntree)
         args.walls_json.parent.mkdir(parents=True, exist_ok=True)
         args.walls_json.write_text(json.dumps({str(k): v for k, v in walls.items()}, indent=2))
         print(f"[walls] {args.walls_json} ({len(walls)} points)")
@@ -204,8 +204,8 @@ def main():
         if not args.walls_json.exists():
             sys.exit(f"missing {args.walls_json}; run with --bench first")
         data = json.loads(args.walls_json.read_text())
-        if "crforest" in data and "rfsrc" in data:
-            walls = {int(k): float(v) for k, v in data["crforest"].items()}
+        if "comprisk" in data and "rfsrc" in data:
+            walls = {int(k): float(v) for k, v in data["comprisk"].items()}
             rfsrc = {int(k): float(v) for k, v in data["rfsrc"].items()}
         else:
             walls = {int(k): float(v) for k, v in data.items()}

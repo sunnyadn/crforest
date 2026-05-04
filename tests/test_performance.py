@@ -14,7 +14,7 @@ import time as time_mod
 import pytest
 from validation.datasets import load as load_dataset
 
-from crforest.forest import CompetingRiskForest
+from comprisk.forest import CompetingRiskForest
 
 
 def _fit_time(X, time_arr, event, mode: str, n_trees: int, n_jobs: int = 1) -> float:

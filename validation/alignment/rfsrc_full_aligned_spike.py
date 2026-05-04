@@ -2,8 +2,8 @@
 
 Tests the full-RNG-alignment hypothesis at production config by
 simultaneously:
-  - crforest ``rng_mode="rfsrc_aligned"`` (aligns stream B for mtry/nsplit)
-  - rfSRC ``bootstrap="by.user"`` with crforest-generated inbag matrix
+  - comprisk ``rng_mode="rfsrc_aligned"`` (aligns stream B for mtry/nsplit)
+  - rfSRC ``bootstrap="by.user"`` with comprisk-generated inbag matrix
     (aligns stream A for bootstrap)
   - split_ntime=None + rfSRC ntime=0 (removes time-grid coarsening bias)
 
@@ -13,7 +13,7 @@ If this closes the cross-lib gap to the Z-cell floor (~0.005 on hd,
 ~0.012 on follic), we have empirical confirmation that the ~90% of
 the production residual attributed to RNG in the Z cell analysis is
 specifically "bootstrap + mtry/nsplit RNG stream independence", and
-that crforest's rng_mode="rfsrc_aligned" successfully closes it.
+that comprisk's rng_mode="rfsrc_aligned" successfully closes it.
 
 Seeds 1..10 to avoid rfSRC's R-wrapper `get.seed` randomizing seed=0.
 
@@ -43,9 +43,9 @@ import time as _time
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
-from validation.alignment.bootstrap_aligned_spike import _crforest_inbag_counts
+from validation.alignment.bootstrap_aligned_spike import _comprisk_inbag_counts
 from validation.alignment.equivalence_gate import (
     aggregate_dataset,
     build_reference_grid,
@@ -80,7 +80,7 @@ def run_cell(
     n_tr = len(train_idx)
     p = X.shape[1]
 
-    # crforest: rng_mode=rfsrc_aligned, production defaults
+    # comprisk: rng_mode=rfsrc_aligned, production defaults
     t0 = _time.perf_counter()
     print(f"[full_aligned ds={dataset} seed={seed}] cr_fit_start", flush=True)
     forest = CompetingRiskForest(
@@ -101,8 +101,8 @@ def run_cell(
         f"[full_aligned seed={seed}] cr_fit_done wall={_time.perf_counter() - t0:.1f}s", flush=True
     )
 
-    # Build matching inbag: replicate crforest's per-tree bootstrap procedure.
-    inbag = _crforest_inbag_counts(n_tr, ntree, seed)
+    # Build matching inbag: replicate comprisk's per-tree bootstrap procedure.
+    inbag = _comprisk_inbag_counts(n_tr, ntree, seed)
 
     feat_cols = [f"x{j}" for j in range(p)]
     train_df = pd.DataFrame(X[train_idx], columns=feat_cols)
@@ -169,7 +169,7 @@ def main() -> None:
     parser.add_argument(
         "--match-stopping",
         action="store_true",
-        help="Align crforest min_samples_split to rfSRC nodesize (both 15, leaf=1) "
+        help="Align comprisk min_samples_split to rfSRC nodesize (both 15, leaf=1) "
         "to eliminate the stopping-rule semantic gap identified in "
         "synthetic ntree=1 diagnostics.",
     )

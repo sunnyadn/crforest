@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 
 def weibull_cr(n: int, p: int, seed: int):

@@ -11,19 +11,19 @@ from joblib import Parallel, delayed
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
-from crforest._binning import apply_bins, fit_bin_edges
-from crforest._gpu_detect import detect_cuda
-from crforest._hist_tree import build_tree_hist, predict_tree_hist, predict_tree_hist_chf
-from crforest._importance import _compute_importance_impl
-from crforest._sklearn_compat import (
+from comprisk._binning import apply_bins, fit_bin_edges
+from comprisk._gpu_detect import detect_cuda
+from comprisk._hist_tree import build_tree_hist, predict_tree_hist, predict_tree_hist_chf
+from comprisk._importance import _compute_importance_impl
+from comprisk._sklearn_compat import (
     Surv,
     is_structured_survival_y,
     unpack_structured_y,
 )
-from crforest._time_grid import coarsen_time_grid, fit_time_grid
-from crforest._tree import build_tree, predict_tree, predict_tree_chf
-from crforest._validation import check_inputs
-from crforest.metrics import concordance_index_cr
+from comprisk._time_grid import coarsen_time_grid, fit_time_grid
+from comprisk._tree import build_tree, predict_tree, predict_tree_chf
+from comprisk._validation import check_inputs
+from comprisk.metrics import concordance_index_cr
 
 DEFAULT_SPLIT_NTIME = 10
 
@@ -136,7 +136,7 @@ class CompetingRiskForest(BaseEstimator):
         To achieve **bit-identical trees** vs rfSRC under ``bootstrap=False``,
         use these parameter mappings::
 
-            rfSRC parameter       crforest parameter
+            rfSRC parameter       comprisk parameter
             -----------------     --------------------------------
             nodesize=K         -> min_samples_split=2*K, min_samples_leaf=1
             samp=matrix(1L,...) -> bootstrap=False
@@ -144,9 +144,9 @@ class CompetingRiskForest(BaseEstimator):
             (no max-depth)     -> max_depth=None
 
         rfSRC's ``nodesize`` is a parent-min-size constraint: both children
-        must reach ``K`` observations.  crforest matches this with
+        must reach ``K`` observations.  comprisk matches this with
         ``min_samples_split=2*K`` (guarantees each child can reach K) and
-        ``min_samples_leaf=1`` (removes crforest's own child-size floor).
+        ``min_samples_leaf=1`` (removes comprisk's own child-size floor).
 
         Known limitation: under ``bootstrap=True`` a residual ~0.003 p95
         ΔCIF persists because rfSRC consumes an additional RNG stream during
@@ -160,7 +160,7 @@ class CompetingRiskForest(BaseEstimator):
         because host orchestration dominates the single-tree wall. Pass
         ``device="cuda"`` explicitly to opt into the GPU path; the full
         GPU rewrite is scheduled for v1.1. ``"cuda"`` requires the optional
-        ``crforest[gpu]`` install and is incompatible with
+        ``comprisk[gpu]`` install and is incompatible with
         ``equivalence="rfsrc"`` / ``rng_mode="rfsrc_aligned"``.
     """
 
@@ -296,7 +296,7 @@ class CompetingRiskForest(BaseEstimator):
             )
         if self.n_causes_ > 255:
             raise ValueError(
-                f"crforest supports up to 255 competing causes in histogram mode; "
+                f"comprisk supports up to 255 competing causes in histogram mode; "
                 f"got n_causes={self.n_causes_}. Please file an issue if you need higher."
             )
         if self.time_grid > 65_535:
@@ -352,7 +352,7 @@ class CompetingRiskForest(BaseEstimator):
             backend = self._select_backend()
             self._effective_device_ = backend
             if backend == "cuda":
-                from crforest._gpu_kernels import build_flat_tree_gpu as _flat_builder
+                from comprisk._gpu_kernels import build_flat_tree_gpu as _flat_builder
 
                 # Default n_jobs=-1 silently coerces to 1 (single-GPU is serial).
                 # Only warn when the user *explicitly* asked for multi-core CPU
@@ -364,7 +364,7 @@ class CompetingRiskForest(BaseEstimator):
                     )
                 n_jobs_local = 1
             else:
-                from crforest._flat_tree_builder import build_flat_tree as _flat_builder
+                from comprisk._flat_tree_builder import build_flat_tree as _flat_builder
 
                 n_jobs_local = self.n_jobs
 
@@ -458,7 +458,7 @@ class CompetingRiskForest(BaseEstimator):
                     "rng_mode='rfsrc_aligned' requires an explicit random_state "
                     "(rfSRC derives per-tree seeds deterministically from the user seed)."
                 )
-            from crforest._aligned_rng import AlignedRng, derive_per_tree_seeds
+            from comprisk._aligned_rng import AlignedRng, derive_per_tree_seeds
 
             seeds_b = derive_per_tree_seeds(int(self.random_state), self.n_estimators)
             rfsrc_tree_rngs = [AlignedRng(int(s)) for s in seeds_b]
@@ -698,7 +698,7 @@ class CompetingRiskForest(BaseEstimator):
         X_train = getattr(self, "_X_train_oob_", None)
         if X_train is None:
             raise ValueError("training cache missing — refit the forest with bootstrap=True")
-        from crforest._importance import _ensemble_oob_predictions
+        from comprisk._importance import _ensemble_oob_predictions
 
         bin_edges = getattr(self, "bin_edges_", None)
         pred, count = _ensemble_oob_predictions(
@@ -726,7 +726,7 @@ class CompetingRiskForest(BaseEstimator):
 
         Accepts either the three-positional legacy form ``score(X, time, event)``
         or the sklearn-friendly ``score(X, y)`` where ``y`` is a structured
-        array with ``time`` and ``event`` fields (see :class:`crforest.Surv`).
+        array with ``time`` and ``event`` fields (see :class:`comprisk.Surv`).
         """
         check_is_fitted(self, "trees_")
         if event is None:
@@ -737,7 +737,7 @@ class CompetingRiskForest(BaseEstimator):
     def predict(self, X) -> np.ndarray:
         """sklearn-style alias for ``predict_risk(X, cause=1)``.
 
-        Returned shape ``(n_samples,)``. The cause-1 default lets crforest
+        Returned shape ``(n_samples,)``. The cause-1 default lets comprisk
         slot into ``Pipeline`` / ``cross_val_predict`` without a wrapper;
         for cause-k risk or for CIF / CHF curves, call
         :meth:`predict_risk` / :meth:`predict_cif` / :meth:`predict_chf`
@@ -820,7 +820,7 @@ class CompetingRiskForest(BaseEstimator):
         """
         check_is_fitted(self, "trees_")
         if X_eval is None and y_eval is None:
-            from crforest._importance import _compute_importance_oob_impl
+            from comprisk._importance import _compute_importance_oob_impl
 
             resolved_causes = (
                 list(causes) if causes is not None else list(range(1, self.n_causes_ + 1))
@@ -907,7 +907,7 @@ class CompetingRiskForest(BaseEstimator):
         ``equivalence='rfsrc'``.
         """
         check_is_fitted(self, "trees_")
-        from crforest._minimal_depth import compute_minimal_depth
+        from comprisk._minimal_depth import compute_minimal_depth
 
         return compute_minimal_depth(
             self,

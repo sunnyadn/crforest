@@ -1,6 +1,6 @@
 """Per-tree OOB mortality cross-lib comparison on hd seed=1.
 
-For each tree, extracts crforest's per-tree mortality (via
+For each tree, extracts comprisk's per-tree mortality (via
 ``_predict_tree_mortality``) on its OOB samples and rfSRC's per-tree
 mortality (via ``predict.rfsrc(fit, get.tree=t+1)$predicted.oob``), then
 reports per-tree Spearman + p99|Δ|/range across the cells.
@@ -22,8 +22,8 @@ from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr
 from scipy.stats import spearmanr
 
-from crforest import CompetingRiskForest
-from crforest._importance import _predict_tree_mortality
+from comprisk import CompetingRiskForest
+from comprisk._importance import _predict_tree_mortality
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -89,7 +89,7 @@ def main() -> int:
         if len(oob_idx) == 0:
             continue
 
-        # crforest per-tree mortality on OOB
+        # comprisk per-tree mortality on OOB
         cr_mort = np.zeros((2, len(oob_idx)), dtype=np.float64)
         for ci, c in enumerate([1, 2]):
             cr_mort[ci] = _predict_tree_mortality(

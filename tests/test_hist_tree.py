@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from crforest._binning import apply_bins, fit_bin_edges
-from crforest._hist_tree import (
+from comprisk._binning import apply_bins, fit_bin_edges
+from comprisk._hist_tree import (
     HistTreeNode,
     _leaf_counts,
     build_tree_hist,
@@ -72,7 +72,7 @@ def test_leaf_counts_shapes_and_dtypes():
 
 
 def test_leaf_cif_from_counts_matches_aalen_johansen():
-    from crforest._estimators import aalen_johansen, aalen_johansen_from_counts
+    from comprisk._estimators import aalen_johansen, aalen_johansen_from_counts
 
     t_idx = np.array([0, 1, 1, 2], dtype=np.int32)
     ev = np.array([1, 2, 1, 0], dtype=np.int64)
@@ -231,7 +231,7 @@ def test_predict_tree_hist_caches_flat_tree():
 
 def test_leaf_chf_from_counts_matches_nelson_aalen_cs():
     """Default-mode CHF materialization agrees with the reference NA-CS."""
-    from crforest._estimators import nelson_aalen_cs, nelson_aalen_from_counts
+    from comprisk._estimators import nelson_aalen_cs, nelson_aalen_from_counts
 
     t_idx = np.array([0, 1, 1, 2], dtype=np.int32)
     ev = np.array([1, 2, 1, 0], dtype=np.int64)
@@ -248,8 +248,8 @@ def test_leaf_chf_from_counts_matches_nelson_aalen_cs():
 
 def test_predict_tree_hist_chf_single_leaf():
     """Forced-leaf histogram tree CHF equals the root nelson_aalen_from_counts."""
-    from crforest._estimators import nelson_aalen_from_counts
-    from crforest._hist_tree import build_tree_hist, predict_tree_hist_chf
+    from comprisk._estimators import nelson_aalen_from_counts
+    from comprisk._hist_tree import build_tree_hist, predict_tree_hist_chf
 
     X_binned = np.array([[0], [1], [0], [1]], dtype=np.uint8)
     t_idx = np.array([0, 1, 2, 1], dtype=np.int32)
@@ -298,7 +298,7 @@ def test_predict_tree_hist_chf_caches_flat_tree():
     assert tree._chf is None
     assert tree._flat_chf is None
 
-    from crforest._hist_tree import predict_tree_hist_chf
+    from comprisk._hist_tree import predict_tree_hist_chf
 
     predict_tree_hist_chf(tree, X_binned)
 
@@ -311,7 +311,7 @@ def test_predict_tree_hist_chf_caches_flat_tree():
 
 
 def test_build_tree_hist_accepts_splitrule_logrank():
-    from crforest._time_grid import fit_time_grid
+    from comprisk._time_grid import fit_time_grid
 
     rng = np.random.default_rng(2)
     n = 50

@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from crforest._binning import apply_bins, fit_bin_edges
-from crforest._hist_tree import _flatten_tree_hist, build_tree_hist
-from crforest._time_grid import fit_time_grid
-from crforest._tree import _flatten_tree, build_tree
-from crforest._tree_flat import FlatTree, predict_leaf_indices
+from comprisk._binning import apply_bins, fit_bin_edges
+from comprisk._hist_tree import _flatten_tree_hist, build_tree_hist
+from comprisk._time_grid import fit_time_grid
+from comprisk._tree import _flatten_tree, build_tree
+from comprisk._tree_flat import FlatTree, predict_leaf_indices
 
 
 def _numpy_descend(flat: FlatTree, X: np.ndarray) -> np.ndarray:

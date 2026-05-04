@@ -19,7 +19,7 @@ host budget. rfSRC at scale is a "OOM" data point, not a wall number.)
 Output: /tmp/lambda_exp5_walls.parquet — one row per (axis, n, p, device,
 seed) with wall + status (ok/oom/error) + GPU pool usage.
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra gpu --extra dev \\
        python -u validation/spikes/lambda/exp5_paper_scale_bench.py \\
        2>&1 | tee /tmp/lambda_exp5.log'
@@ -59,7 +59,7 @@ def gpu_mem_gb() -> tuple[float, float]:
 
 
 def fit_one(X, t, e, *, device: str, seed: int) -> dict:
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     n_jobs = 1 if device == "cuda" else -1
     f = CompetingRiskForest(

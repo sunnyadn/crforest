@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from crforest import _gpu_detect
+from comprisk import _gpu_detect
 
 
 def pytest_configure(config):

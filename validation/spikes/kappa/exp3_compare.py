@@ -1,9 +1,9 @@
-"""κ.exp3 — apples-to-apples crforest vs rfSRC summary.
+"""κ.exp3 — apples-to-apples comprisk vs rfSRC summary.
 
 Reads `/tmp/chf_2012_rfsrc_risk.parquet` (rfSRC test predictions from exp2.R),
-re-runs crforest fit-and-predict on the same train/test split, then scores
+re-runs comprisk fit-and-predict on the same train/test split, then scores
 BOTH risk vectors with the SAME `concordance_index_cr` + `concordance_index_uno_cr`
-implementations from `crforest.metrics`.
+implementations from `comprisk.metrics`.
 
 Run: uv run python -u validation/spikes/kappa/exp3_compare.py
 """
@@ -16,8 +16,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest, concordance_index_cr
-from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+from comprisk import CompetingRiskForest, concordance_index_cr
+from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 RFSRC_RISK = Path("/tmp/chf_2012_rfsrc_risk.parquet")
@@ -43,8 +43,8 @@ def main() -> None:
         flush=True,
     )
 
-    # --- crforest fit + predict ---
-    print("\n[crforest] fitting 100 trees, default config, n_jobs=-1, device='cpu'", flush=True)
+    # --- comprisk fit + predict ---
+    print("\n[comprisk] fitting 100 trees, default config, n_jobs=-1, device='cpu'", flush=True)
     forest = CompetingRiskForest(n_estimators=100, n_jobs=-1, random_state=42)
     t0 = _time.perf_counter()
     forest.fit(X_tr, t_tr, e_tr)
@@ -53,7 +53,7 @@ def main() -> None:
     cr_risk1 = forest.predict_risk(X_te, cause=1)
     cr_risk2 = forest.predict_risk(X_te, cause=2)
     cr_pred = _time.perf_counter() - t0
-    print(f"[crforest] fit {cr_fit:.2f}s, predict {cr_pred:.2f}s", flush=True)
+    print(f"[comprisk] fit {cr_fit:.2f}s, predict {cr_pred:.2f}s", flush=True)
 
     # --- Full CIF on rfSRC's time grid for direct curve comparison ---
     cif_long = pd.read_parquet(RFSRC_CIF)
@@ -80,7 +80,7 @@ def main() -> None:
     rf_risk1 = rfsrc_df["risk_cause1"].to_numpy(dtype=np.float64)
     rf_risk2 = rfsrc_df["risk_cause2"].to_numpy(dtype=np.float64)
 
-    # --- Score both with the SAME crforest metric implementations ---
+    # --- Score both with the SAME comprisk metric implementations ---
     uno_w = compute_uno_weights(t_te, e_te)
 
     def score(risk1: np.ndarray, risk2: np.ndarray) -> tuple[float, float, float, float]:
@@ -95,9 +95,9 @@ def main() -> None:
 
     # --- Side-by-side print ---
     print("\n" + "=" * 70)
-    print(" apples-to-apples: crforest vs rfSRC on real CHF cohort (n=75k/19k)")
+    print(" apples-to-apples: comprisk vs rfSRC on real CHF cohort (n=75k/19k)")
     print("=" * 70)
-    print(f"{'metric':<32}{'crforest':>14}{'rfSRC':>14}{'Δ (cr − rf)':>14}")
+    print(f"{'metric':<32}{'comprisk':>14}{'rfSRC':>14}{'Δ (cr − rf)':>14}")
     print("-" * 70)
     print(f"{'fit wall (s)':<32}{cr_fit:>14.2f}{235.38:>14.2f}{cr_fit - 235.38:>+14.2f}")
     print(f"{'speedup (×)':<32}{'':>14}{'':>14}{235.38 / cr_fit:>13.2f}×")
@@ -142,7 +142,7 @@ def main() -> None:
         print(f"    p50 |Δ CIF|:            {np.percentile(absdiff, 50):.4f}")
         print(f"    p95 |Δ CIF|:            {np.percentile(absdiff, 95):.4f}")
         print(f"    max |Δ CIF|:            {absdiff.max():.4f}")
-        print(f"    mean signed Δ (cr−rf):  {diff.mean():+.4f}  (<0 = crforest underestimates)")
+        print(f"    mean signed Δ (cr−rf):  {diff.mean():+.4f}  (<0 = comprisk underestimates)")
         print(f"    Pearson (full flat):    {pearson_flat:.4f}")
         print(
             f"    mean per-time Pearson:  {per_time_pearson.mean():.4f}  "

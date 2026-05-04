@@ -22,7 +22,7 @@ split-winner selection when candidates have identical stats, ensemble
 averaging precision across 500 trees. This floor is O(1e-3), well
 below within-lib seed variance (~0.28 on hd).
 
-Strategic: Phase 1 (port rfSRC's ran1 RNG to crforest) would close the
+Strategic: Phase 1 (port rfSRC's ran1 RNG to comprisk) would close the
 RNG portion, bringing the production gap from ~0.057 to ~0.005-0.015.
 Does NOT achieve literal bit-identity (Z != 0), but collapses the gap
 to a numerical-precision floor.
@@ -35,9 +35,9 @@ import time as _time
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
-from validation.alignment.bootstrap_aligned_spike import _crforest_inbag_counts
+from validation.alignment.bootstrap_aligned_spike import _comprisk_inbag_counts
 from validation.alignment.equivalence_gate import (
     aggregate_dataset,
     build_reference_grid,
@@ -64,7 +64,7 @@ def run_z_cell(dataset: str, seed: int, *, ntree: int = 500) -> dict:
     n_tr = len(train_idx)
     p = X.shape[1]
 
-    # crforest with full mtry + exhaustive splits + no time coarsening.
+    # comprisk with full mtry + exhaustive splits + no time coarsening.
     t0 = _time.perf_counter()
     print(f"[Z ds={dataset} seed={seed}] cr_fit_start n_train={n_tr} p={p}", flush=True)
     forest = CompetingRiskForest(
@@ -83,8 +83,8 @@ def run_z_cell(dataset: str, seed: int, *, ntree: int = 500) -> dict:
     cr_grid = np.asarray(forest.time_grid_, dtype=np.float64)
     print(f"[Z seed={seed}] cr_fit_done wall={_time.perf_counter() - t0:.1f}s", flush=True)
 
-    # Build matching inbag matrix (replicates crforest's per-tree bootstrap).
-    inbag = _crforest_inbag_counts(n_tr, ntree, seed)
+    # Build matching inbag matrix (replicates comprisk's per-tree bootstrap).
+    inbag = _comprisk_inbag_counts(n_tr, ntree, seed)
 
     feat_cols = [f"x{j}" for j in range(p)]
     train_df = pd.DataFrame(X[train_idx], columns=feat_cols)

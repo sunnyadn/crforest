@@ -3,17 +3,17 @@
 Loads:
   /tmp/chf_2012_clean.parquet                         # shared data
   /tmp/chf_2012_test_idx.txt
-  /tmp/chf_2012_crforest_win_risks.parquet            # exp4c (cpu + cuda × 5 seeds × 2 risk scalars)
-  /tmp/chf_2012_crforest_win_walls.parquet
+  /tmp/chf_2012_comprisk_win_risks.parquet            # exp4c (cpu + cuda × 5 seeds × 2 risk scalars)
+  /tmp/chf_2012_comprisk_win_walls.parquet
   /tmp/chf_2012_rfsrc_risks_multiseed.parquet         # exp4_multiseed_rfsrc (rf.cores=16)
   /tmp/chf_2012_rfsrc_walls_multiseed.parquet
 
 Reports same-machine apples-to-apples (1) wall-time, (2) Harrell + Uno
-C-index for HF/death under both `cif_last` and `integrated_chf` crforest
+C-index for HF/death under both `cif_last` and `integrated_chf` comprisk
 risk scalars. This is the table that goes into the paper.
 
 Run on Mac after the win bench finishes and after rsync of win:/tmp/* back:
-  rsync win:/tmp/chf_2012_crforest_win_*.parquet /tmp/
+  rsync win:/tmp/chf_2012_comprisk_win_*.parquet /tmp/
   rsync win:/tmp/chf_2012_rfsrc_*multiseed.parquet /tmp/
   uv run python -u validation/spikes/kappa/exp4d_win_aggregate.py
 """
@@ -25,13 +25,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import concordance_index_cr
-from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+from comprisk import concordance_index_cr
+from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 TEST_IDX = Path("/tmp/chf_2012_test_idx.txt")
-CR_WIN_RISKS = Path("/tmp/chf_2012_crforest_win_risks.parquet")
-CR_WIN_WALLS = Path("/tmp/chf_2012_crforest_win_walls.parquet")
+CR_WIN_RISKS = Path("/tmp/chf_2012_comprisk_win_risks.parquet")
+CR_WIN_WALLS = Path("/tmp/chf_2012_comprisk_win_walls.parquet")
 RF_RISKS = Path("/tmp/chf_2012_rfsrc_risks_multiseed.parquet")
 RF_WALLS = Path("/tmp/chf_2012_rfsrc_walls_multiseed.parquet")
 SEEDS = [42, 43, 44, 45, 46]
@@ -55,7 +55,7 @@ def main() -> None:
             "c2_u": concordance_index_uno_cr(e_te, t_te, risk2, cause=2, weights=uno_w),
         }
 
-    # --- crforest win (5 seeds × {cpu,cuda} × {cif,chf}) ---
+    # --- comprisk win (5 seeds × {cpu,cuda} × {cif,chf}) ---
     cr_long = pd.read_parquet(CR_WIN_RISKS)
     cr_walls = pd.read_parquet(CR_WIN_WALLS)
     rows = []
@@ -79,7 +79,7 @@ def main() -> None:
                 )
                 rows.append(
                     {
-                        "method": f"crforest-{device}-{risk_kind}",
+                        "method": f"comprisk-{device}-{risk_kind}",
                         "device": device,
                         "scalar": risk_kind,
                         "seed": seed,
@@ -166,8 +166,8 @@ def main() -> None:
         ("c1_u", "HF Uno IPCW"),
         ("c2_u", "Death Uno IPCW"),
     ):
-        # crforest cpu integrated_chf
-        sub_cr = df_all[(df_all["method"] == "crforest-cpu-chf")]
+        # comprisk cpu integrated_chf
+        sub_cr = df_all[(df_all["method"] == "comprisk-cpu-chf")]
         sub_rf = df_all[(df_all["method"] == "rfsrc")]
         cr_mean = sub_cr[col].mean()
         rf_mean = sub_rf[col].mean()
@@ -181,9 +181,9 @@ def main() -> None:
             f"rf={rf_mean:.4f}±{rf_std:.4f}  Δ={gap:+.4f}  |Δ|/SE={ratio:5.2f}"
         )
 
-    # --- Compare scalar choice within crforest ---
+    # --- Compare scalar choice within comprisk ---
     print("\n" + "=" * 100)
-    print(" crforest scalar comparison (same model, same machine, same seeds)")
+    print(" comprisk scalar comparison (same model, same machine, same seeds)")
     print("=" * 100)
     for col, label in (
         ("c1_h", "HF Harrell"),
@@ -191,8 +191,8 @@ def main() -> None:
         ("c1_u", "HF Uno IPCW"),
         ("c2_u", "Death Uno IPCW"),
     ):
-        cif = df_all[df_all["method"] == "crforest-cpu-cif"][col]
-        chf = df_all[df_all["method"] == "crforest-cpu-chf"][col]
+        cif = df_all[df_all["method"] == "comprisk-cpu-cif"][col]
+        chf = df_all[df_all["method"] == "comprisk-cpu-chf"][col]
         gap = cif.mean() - chf.mean()
         print(
             f"  {label:<18}  CIF[last]={cif.mean():.4f}  "
@@ -201,7 +201,7 @@ def main() -> None:
 
     # --- CPU vs GPU bit-equivalence sanity check ---
     print("\n" + "=" * 100)
-    print(" crforest CPU vs CUDA cross-backend ranking agreement (per seed)")
+    print(" comprisk CPU vs CUDA cross-backend ranking agreement (per seed)")
     print("=" * 100)
     for seed in SEEDS:
         cpu_sub = (

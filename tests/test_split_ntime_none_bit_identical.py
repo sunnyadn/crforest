@@ -17,6 +17,7 @@ baseline. History:
   - Plan 2 Task 9d.5 (pin cpu):   ``e7930718..`` / 14801527 bytes (-5, ctor pinned ``device='cpu'`` so the test is hardware-independent — ``device='auto'`` resolves to cuda when cupy is installed and produces a different pickle by design)
   - Surv y_train_oob field order: ``70efbe29..`` / 14801527 bytes (0 byte delta, struct layout swap — ``_y_train_oob_`` field order changed from ``[("time", float64), ("event", int64)]`` to sksurv-canonical ``[("event", int64), ("time", float64)]`` after the ``Surv.from_arrays`` simplification)
   - SUN-42 time-grid fix:         ``ff50915f..`` / 14801551 bytes (+24, ``_time_grid_max_eff_`` int added as fitted attr by ``_resolve_equivalence``; tree-building unchanged on default path)
+  - SUN-44 package rename:        ``b07aa92c..`` / 14801551 bytes (+0, package renamed ``crforest`` → ``comprisk``; both are 8 chars so the qualified class names embedded in the pickle change content but not size — digest only)
 
 Future changes that affect ``split_ntime=None`` tree-building behavior
 will drift this digest and flag for investigation.
@@ -29,9 +30,9 @@ import pickle
 
 import numpy as np
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
-ANCHOR_SHA256 = "ff50915f2e2dc9e6b80efbe93dc41539596ea36bdd1ccfb98322c8fc5f948d2b"
+ANCHOR_SHA256 = "b07aa92c25aaa8e72bf4c05a2437d94a7f22847ff5a11f8e2ca35898a2fc587d"
 ANCHOR_PICKLE_BYTES = 14801551
 
 

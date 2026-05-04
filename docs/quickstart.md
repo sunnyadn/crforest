@@ -1,13 +1,13 @@
 # Quickstart
 
-A working tour of crforest: data format, fitting, prediction shapes, scoring,
+A working tour of comprisk: data format, fitting, prediction shapes, scoring,
 permutation importance, performance levers, and rfSRC migration.
 
 Every code block is runnable end-to-end.
 
 ## 1. Data format
 
-crforest expects three arrays and treats them positionally:
+comprisk expects three arrays and treats them positionally:
 
 ```python
 import numpy as np
@@ -22,7 +22,7 @@ event = np.random.default_rng(2).choice([0, 1, 2], size=500)  # (n,) int
 #   event[i] == k≥1  → subject i had cause-k event at time[i]
 ```
 
-Causes are indexed from 1 — `event` codes 1, 2, … K. crforest infers `K`
+Causes are indexed from 1 — `event` codes 1, 2, … K. comprisk infers `K`
 from the training data (`forest.n_causes_` after fit; supports up to 255
 causes).
 
@@ -33,7 +33,7 @@ scikit-survival).
 ## 2. Fitting
 
 ```python
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 forest = CompetingRiskForest(
     n_estimators=200,
@@ -99,8 +99,8 @@ risk_cif_last = forest.predict_risk(X, cause=1, kind="cif_last")  # CIF at t_max
   loses signal when CIF saturates near 1.
 
 If you need raw per-tree CIFs, walk `forest.trees_` directly — each tree's
-predict function lives in `crforest._tree.predict_tree` (reference mode) or
-`crforest._hist_tree.predict_tree_hist` (default mode).
+predict function lives in `comprisk._tree.predict_tree` (reference mode) or
+`comprisk._hist_tree.predict_tree_hist` (default mode).
 
 ## 4. Scoring
 
@@ -116,7 +116,7 @@ For Uno IPCW C-index (recommended in heavily-censored data), use the
 top-level metric on a precomputed risk vector:
 
 ```python
-from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
 w = compute_uno_weights(time, event)                 # IPCW weights, shape (n,)
 risk = forest.predict_risk(X, cause=1)
@@ -152,7 +152,7 @@ the scikit-survival-style structured `y`. No wrapper, no custom scorer:
 
 ```python
 from sklearn.model_selection import KFold, cross_val_score
-from crforest import CompetingRiskForest, Surv
+from comprisk import CompetingRiskForest, Surv
 
 y = Surv.from_arrays(event=event, time=time)
 forest = CompetingRiskForest(n_estimators=100, random_state=42, n_jobs=-1)
@@ -221,7 +221,7 @@ useful "warm" baseline.
 ## 7. GPU preview (optional)
 
 ```bash
-pip install "crforest[gpu]"   # cupy-cuda12x + cuda runtime
+pip install "comprisk[gpu]"   # cupy-cuda12x + cuda runtime
 ```
 
 ```python
@@ -269,7 +269,7 @@ single-threaded: the CRAN R binary is not built with OpenMP, so rfSRC's
 `rf.cores` option silently does nothing. Confirm with `rfsrc(...)$openmp`
 or `library(parallel); detectCores()` against actual `top` CPU usage
 during a fit. Fixing it requires rebuilding R against a Homebrew
-gcc/clang with OpenMP support. crforest gets parallelism out of the box
+gcc/clang with OpenMP support. comprisk gets parallelism out of the box
 (`n_jobs=-1` default) without any compile-time setup.
 
 Cost: the aligned RNG runs the per-tree state in pure Python (correctness

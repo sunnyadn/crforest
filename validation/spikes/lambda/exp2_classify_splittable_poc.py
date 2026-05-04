@@ -23,7 +23,7 @@ covering all branch combinations (no failed, all failed, partial,
 slots_left exhausted mid-list). NOT integrated into build_flat_tree_gpu
 yet — that's Phase A2/A3.
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra gpu --extra dev \\
        python -u validation/spikes/lambda/exp2_classify_splittable_poc.py'
 """

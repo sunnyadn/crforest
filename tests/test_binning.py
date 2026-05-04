@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from crforest._binning import apply_bins, bin_to_threshold, fit_bin_edges
+from comprisk._binning import apply_bins, bin_to_threshold, fit_bin_edges
 
 
 def test_fit_bin_edges_midpoints_when_few_unique_values():

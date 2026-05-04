@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> **Project rename in 0.3.1**: this package was published as `crforest` for
+> 0.1.0 → 0.3.0. From 0.3.1 it is named `comprisk`. All earlier entries
+> describe releases that shipped on PyPI as `crforest`; the import path
+> `from crforest import …` was the supported form for those versions. See
+> the 0.3.1 entry below for the migration recipe.
+
+## [0.3.1] — 2026-05-04
+
+Project rename and reposition. Code is identical to 0.3.0; this release
+exists to claim the new package name on PyPI, broaden the package scope
+beyond "competing-risks Random Forest" to "Python toolkit for competing
+risks," and announce the v0.4 roadmap (Fine-Gray subdistribution-hazard
+regression + stand-alone Aalen-Johansen CIF + Gray's K-sample test +
+cause-specific Cox PH).
+
+### Changed
+
+- **Package renamed `crforest` → `comprisk`.** `pip install comprisk`,
+  `from comprisk import CompetingRiskForest`. The `crforest` PyPI package
+  is deprecated with a pointer to `comprisk`; the GitHub URL
+  `github.com/sunnyadn/crforest` auto-redirects to
+  `github.com/sunnyadn/comprisk`.
+- README rewritten to lead with the CR-toolkit framing and add an explicit
+  Roadmap section.
+- pyproject `description` rewritten to match the new framing.
+- `CITATION.cff` title and abstract updated; version bumped to 0.3.1.
+
+### Migration
+
+```python
+# before (crforest 0.1.0 – 0.3.0)
+from crforest import CompetingRiskForest
+
+# after (comprisk ≥ 0.3.1)
+from comprisk import CompetingRiskForest
+```
+
+API surface is unchanged; the rename is a one-line sed across user code.
+
 ## [0.3.0] — 2026-05-03
 
 Adds Ishwaran-style minimal-depth variable selection. Partner-blocked
@@ -31,7 +70,7 @@ feature (SUN-42); ships ahead of SHAP support (SUN-43).
   `min_samples_leaf=1`, `max_depth=None`). Verified on the bundled `follic`
   dataset (oracle: `tests/fixtures/rfsrc_var_select_follic.json`); per-tree
   trees are bit-identical at ntree=100. Note: the threshold *scalar* differs
-  because crforest implements the paper's forest-averaged threshold
+  because comprisk implements the paper's forest-averaged threshold
   (Section 3) while rfSRC defaults to tree-averaged; rankings agree.
 - Known limitation: `bootstrap=True` retains a residual ~0.003 p95 ΔCIF
   (RNG stream B shift); SUN-44 tracks the fix.
@@ -149,7 +188,7 @@ Initial public release. Pre-alpha; API may change before 1.0.
   Breiman or held-out, scored with the Uno IPCW C-index. Returns a
   DataFrame with per-cause and composite columns. Bit-equivalent across
   `n_jobs` for a fixed `random_state`.
-- **Concordance metrics** (`crforest.metrics`) — Wolbers cause-specific
+- **Concordance metrics** (`comprisk.metrics`) — Wolbers cause-specific
   C-index, Uno IPCW weights with ESS-truncation gating, and Uno IPCW
   cause-specific C-index for competing risks.
 - **rfSRC equivalence preset** — `equivalence="rfsrc"` reproduces
@@ -162,13 +201,13 @@ Initial public release. Pre-alpha; API may change before 1.0.
   log-rank time grid for split selection while leaves keep the full
   grid for CIF/CHF output. Default `10`.
 - **CUDA preview** — optional `device="cuda"` backend for default-mode
-  fitting via the `crforest[gpu]` extra (cupy + CUDA 12). Faster only at
+  fitting via the `comprisk[gpu]` extra (cupy + CUDA 12). Faster only at
   low feature count today; full GPU rewrite scheduled for v1.1.
 
 ### Performance (v0.1 reference workload)
 
 Same-machine benchmark, real CHF cohort with HF/death competing risks
-(n=75 000, p=58, ntree=100, 24-thread CPU): crforest **22.5 s** vs
+(n=75 000, p=58, ntree=100, 24-thread CPU): comprisk **22.5 s** vs
 randomForestSRC 111.7 s = **4.96× faster** at tied HF Harrell C-index
 (0.8642 vs 0.8643). Apples-to-apples vs rfSRC's best `ntime` config:
 **6.13× faster**. UKB-scale feasibility check (n=1 000 000) completes in

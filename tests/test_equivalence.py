@@ -26,7 +26,7 @@ from scipy.stats import spearmanr
 from validation.datasets import load as load_dataset
 from validation.splits import load as load_splits
 
-from crforest.forest import CompetingRiskForest
+from comprisk.forest import CompetingRiskForest
 
 
 def _pbc_default_vs_reference_deltas(
@@ -140,7 +140,7 @@ def test_default_mode_cindex_stable_across_seeds():
     same data, compute C-index per forest, require that the seed-to-seed
     standard deviation is plausible (not catastrophic).
     """
-    from crforest.metrics import concordance_index_uno_cr
+    from comprisk.metrics import concordance_index_uno_cr
 
     X, time, event = load_dataset("pbc")
     rng = np.random.default_rng(0)

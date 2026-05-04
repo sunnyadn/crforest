@@ -1,10 +1,10 @@
-"""Fit crforest on 1 seed per dataset and return wall-clock fit time."""
+"""Fit comprisk on 1 seed per dataset and return wall-clock fit time."""
 
 from __future__ import annotations
 
 import time
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.config import HarnessConfig
 from validation.datasets import load as load_dataset
 from validation.splits import load as load_splits

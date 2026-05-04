@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from _dgp import load
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 LOG_DIR = Path(__file__).parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)

@@ -3,7 +3,7 @@
 import builtins
 import sys
 
-from crforest import _gpu_detect
+from comprisk import _gpu_detect
 
 
 def test_detect_cuda_returns_bool_and_reason():

@@ -1,4 +1,4 @@
-"""Per-feature split-threshold comparison harness: crforest vs rfSRC.
+"""Per-feature split-threshold comparison harness: comprisk vs rfSRC.
 
 Covers both splitrules:
 - ``splitrule="logrankCR"`` — composite log-rank (SURV_CR_LAU in rfSRC).
@@ -6,7 +6,7 @@ Covers both splitrules:
 
 Uses one rfSRC fit per feature (``nsplit=0``, ``bootstrap="none"``,
 ``nodedepth=1``) to read rfSRC's chosen root split threshold, and compares
-against crforest's argmax across midpoint candidates.
+against comprisk's argmax across midpoint candidates.
 Consumers: ``tests/test_rfsrc_split_equivalence.py`` and
 ``validation.alignment.gen_fixtures``.
 """
@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from crforest._splits import (
+from comprisk._splits import (
     bin_times,
     cause_specific_log_rank_statistic,
     composite_log_rank_statistic,
@@ -82,7 +82,7 @@ def rfsrc_per_feature_best_split(
     ``(feature, best_threshold)``.
 
     rfSRC stores ``contPT`` as the lower sorted-unique-X value (``x[j]``);
-    crforest reports the midpoint ``(x[j] + x[j+1]) / 2``.  Both describe
+    comprisk reports the midpoint ``(x[j] + x[j+1]) / 2``.  Both describe
     the same sample partition — this function converts to the midpoint
     convention so frame-level comparisons match exactly.
 
@@ -174,7 +174,7 @@ def rfsrc_per_feature_best_split(
     return pd.DataFrame(rows, columns=["feature", "best_threshold"])
 
 
-def crforest_candidate_stats(
+def comprisk_candidate_stats(
     X: np.ndarray,
     time: np.ndarray,
     event: np.ndarray,
@@ -183,7 +183,7 @@ def crforest_candidate_stats(
     splitrule: str = "logrankCR",
     cause: int = 1,
 ) -> pd.DataFrame:
-    """Compute crforest's log-rank statistic for every candidate split.
+    """Compute comprisk's log-rank statistic for every candidate split.
 
     Candidates are the midpoints between consecutive unique values per feature,
     matching find_best_split's enumeration. Returns a DataFrame with columns

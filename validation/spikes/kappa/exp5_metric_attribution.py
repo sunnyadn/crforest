@@ -26,12 +26,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import concordance_index_cr
-from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+from comprisk import concordance_index_cr
+from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 TEST_IDX = Path("/tmp/chf_2012_test_idx.txt")
-CR_RISKS = Path("/tmp/chf_2012_crforest_risks_multiseed.parquet")
+CR_RISKS = Path("/tmp/chf_2012_comprisk_risks_multiseed.parquet")
 RF_RISKS = Path("/tmp/chf_2012_rfsrc_risks_multiseed.parquet")
 SEEDS = [42, 43, 44, 45, 46]
 
@@ -47,7 +47,7 @@ def stratify_cindex(
     """Cause-specific Harrell's C-index per death-time stratum.
 
     Pairs (i, j) are bucketed by t_i quartile (i is the case with event=cause).
-    For each bucket, computes Harrell's C separately for crforest and rfSRC
+    For each bucket, computes Harrell's C separately for comprisk and rfSRC
     risk vectors. Allows seeing where the two methods agree/disagree.
     """
     case_mask = e_te == cause

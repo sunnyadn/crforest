@@ -2,7 +2,7 @@
 
 Not apples-to-apples (binary classification vs competing-risks survival),
 but answers "what's a well-engineered tree library's wall on this data
-shape?". If lightgbm is e.g. 30s and crforest is 360s, that bounds our
+shape?". If lightgbm is e.g. 30s and comprisk is 360s, that bounds our
 engineering headroom at ~10×.
 
 Encoding: event=0 (censored) → 0; event∈{1,2} → 1. Loses CR structure
@@ -51,7 +51,7 @@ def main() -> None:
     X, _, e = load(N, SEED)
     y_binary = (e > 0).astype(np.int32)
 
-    # Histogram-based, comparable knobs to crforest's:
+    # Histogram-based, comparable knobs to comprisk's:
     # - num_leaves ≈ 2^max_depth; pick something reasonable for 100k
     # - bagging_fraction ≈ bootstrap fraction (1.0 in our default — we use boots WITH replacement)
     # - feature_fraction ≈ mtry/p = 8/60 ≈ 0.13
@@ -71,7 +71,7 @@ def main() -> None:
     train_w = lgb.Dataset(X[:2000], label=y_binary[:2000])
     lgb.train(params, train_w, num_boost_round=4)
 
-    # Random forest mode (boosting=rf) — closer to crforest semantics than gbdt
+    # Random forest mode (boosting=rf) — closer to comprisk semantics than gbdt
     rf_params = dict(params)
     rf_params["boosting"] = "rf"
     rf_params["bagging_fraction"] = 0.632  # rf-style sampling-w/o-replacement proxy

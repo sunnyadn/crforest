@@ -16,7 +16,7 @@ Two parts:
   cupy.ndarray.get + cupy.asnumpy to log call site + size + wall. Single
   tree fit on real CHF, summary table per .get() call site.
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra gpu --extra dev \\
        python -u validation/spikes/lambda/exp4_get_breakdown.py'
 """
@@ -108,7 +108,7 @@ def part2_instrumented_fit():
     X_tr, t_tr, e_tr, p = load_chf()
     print(f"[load] real CHF train n={len(X_tr):,} p={p}", flush=True)
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     print("[warmup] cuda compile + 4-tree fit on 5k slice...", flush=True)
     log.clear()

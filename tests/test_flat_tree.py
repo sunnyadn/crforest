@@ -16,8 +16,8 @@ def _build_3_leaf_hist_tree():
                                         /                       \\
                                      mid-leaf                 right-leaf
     """
-    from crforest._hist_tree import HistTreeNode
-    from crforest._sparse_leaves import to_sparse_at_risk, to_sparse_event_counts
+    from comprisk._hist_tree import HistTreeNode
+    from comprisk._sparse_leaves import to_sparse_at_risk, to_sparse_event_counts
 
     def mkleaf(seed: int) -> HistTreeNode:
         rng = np.random.default_rng(seed)
@@ -45,7 +45,7 @@ def test_leaf_idx_of_node_maps_leaves_in_dfs_order() -> None:
 
     For internal nodes it is -1.
     """
-    from crforest._hist_tree import _flatten_tree_hist
+    from comprisk._hist_tree import _flatten_tree_hist
 
     root = _build_3_leaf_hist_tree()
     flat = _flatten_tree_hist(root)
@@ -65,7 +65,7 @@ def test_leaf_idx_of_node_maps_leaves_in_dfs_order() -> None:
 
 def test_leaf_table_compact_shape() -> None:
     """leaf_table is shape (n_leaves, n_causes, n_time_bins)."""
-    from crforest._hist_tree import _flatten_tree_hist
+    from comprisk._hist_tree import _flatten_tree_hist
 
     root = _build_3_leaf_hist_tree()
     flat = _flatten_tree_hist(root)
@@ -76,7 +76,7 @@ def test_leaf_table_compact_shape() -> None:
 
 def test_predict_with_flat_uses_leaf_idx_map() -> None:
     """predict_tree_hist returns one row per input X row, shape (n, n_causes, n_time_bins)."""
-    from crforest._hist_tree import _flatten_tree_hist, predict_tree_hist
+    from comprisk._hist_tree import _flatten_tree_hist, predict_tree_hist
 
     root = _build_3_leaf_hist_tree()
     # Three samples chosen to hit each leaf (feature 0 <= 3 → left; > 3 and

@@ -1,9 +1,9 @@
-"""ζ benchmark — crforest side: Weibull CR data gen and fit timing.
+"""ζ benchmark — comprisk side: Weibull CR data gen and fit timing.
 
 Usage:
-    uv run python run_crforest.py --step gen
-    uv run python run_crforest.py --step bench
-    uv run python run_crforest.py --self-test
+    uv run python run_comprisk.py --step gen
+    uv run python run_comprisk.py --step bench
+    uv run python run_comprisk.py --self-test
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
@@ -135,10 +135,10 @@ def bench_all() -> None:
     rows = []
     for n in N_LADDER:
         for s in SEEDS:
-            print(f"[bench] lib=crforest n={n} seed={s} start", flush=True)
+            print(f"[bench] lib=comprisk n={n} seed={s} start", flush=True)
             fit_wall, rss_mb, pred_wall = _fit_once(n, s)
             print(
-                f"[bench] lib=crforest n={n} seed={s} fit_wall={fit_wall:.2f}s "
+                f"[bench] lib=comprisk n={n} seed={s} fit_wall={fit_wall:.2f}s "
                 f"peak_rss={rss_mb:.1f}MB predict_wall={pred_wall}",
                 flush=True,
             )
@@ -151,7 +151,7 @@ def bench_all() -> None:
                     "predict_wall_s": pred_wall,
                 }
             )
-    out = TIMINGS_DIR / "crforest_timings.parquet"
+    out = TIMINGS_DIR / "comprisk_timings.parquet"
     pd.DataFrame(rows).to_parquet(out)
     print(f"[bench] wrote {out}", flush=True)
 

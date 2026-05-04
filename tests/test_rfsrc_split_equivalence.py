@@ -1,13 +1,13 @@
-"""Numerical equivalence: crforest vs rfSRC per-feature argmax threshold.
+"""Numerical equivalence: comprisk vs rfSRC per-feature argmax threshold.
 
 Two splitrules covered: "logrankCR" (SURV_CR_LAU) and "logrank" (SURV_LR).
-Each invariant: crforest's composite/cause-specific log-rank statistic
+Each invariant: comprisk's composite/cause-specific log-rank statistic
 reaches its per-feature maximum at the same threshold rfSRC chooses
 under the corresponding splitrule, within atol=1e-6.
 
-- ``test_crforest_argmax_matches_rfsrc_fixture[splitrule]`` — CI-gated,
+- ``test_comprisk_argmax_matches_rfsrc_fixture[splitrule]`` — CI-gated,
   reads a pinned fixture (no rpy2 needed).
-- ``test_crforest_argmax_matches_live_rfsrc[splitrule-seed]`` — dev-only,
+- ``test_comprisk_argmax_matches_live_rfsrc[splitrule-seed]`` — dev-only,
   runs rfSRC live via rpy2. Parametrized over (splitrule, seed).
 """
 
@@ -19,7 +19,7 @@ import pandas as pd
 import pytest
 from validation.alignment import _rpy2_available
 from validation.alignment.compare_splits import (
-    crforest_candidate_stats,
+    comprisk_candidate_stats,
     rfsrc_per_feature_best_split,
     toy_input,
 )
@@ -34,8 +34,8 @@ _CASES = [
 ]
 
 
-def _crforest_argmax_thresholds(data: dict, splitrule: str, cause: int | None) -> pd.DataFrame:
-    df = crforest_candidate_stats(
+def _comprisk_argmax_thresholds(data: dict, splitrule: str, cause: int | None) -> pd.DataFrame:
+    df = comprisk_candidate_stats(
         data["X"],
         data["time"],
         data["event"],
@@ -63,13 +63,13 @@ def _threshold_mismatches(cr: pd.DataFrame, rf: pd.DataFrame, atol: float) -> pd
     _CASES,
     ids=lambda c: c if isinstance(c, str) else str(c),
 )
-def test_crforest_argmax_matches_rfsrc_fixture(splitrule, cause, fixture_name):
+def test_comprisk_argmax_matches_rfsrc_fixture(splitrule, cause, fixture_name):
     fixture = _FIXTURE_DIR / fixture_name
     rfsrc = pd.read_parquet(fixture)
     mismatches = []
     for seed in sorted(rfsrc["seed"].unique()):
         data = toy_input(seed=int(seed), n=30, n_features=3, n_causes=2)
-        cr = _crforest_argmax_thresholds(data, splitrule=splitrule, cause=cause)
+        cr = _comprisk_argmax_thresholds(data, splitrule=splitrule, cause=cause)
         rf = rfsrc[rfsrc["seed"] == seed][["feature", "best_threshold"]].reset_index(drop=True)
         diff = _threshold_mismatches(cr, rf, atol=_THRESHOLD_ATOL)
         if len(diff) > 0:
@@ -88,10 +88,10 @@ def test_crforest_argmax_matches_rfsrc_fixture(splitrule, cause, fixture_name):
     ids=lambda c: c if isinstance(c, str) else str(c),
 )
 @pytest.mark.parametrize("seed", range(5))
-def test_crforest_argmax_matches_live_rfsrc(splitrule, cause, fixture_name, seed):
+def test_comprisk_argmax_matches_live_rfsrc(splitrule, cause, fixture_name, seed):
     del fixture_name  # unused in live path
     data = toy_input(seed=seed, n=30, n_features=3, n_causes=2)
-    cr = _crforest_argmax_thresholds(data, splitrule=splitrule, cause=cause)
+    cr = _comprisk_argmax_thresholds(data, splitrule=splitrule, cause=cause)
     rf = rfsrc_per_feature_best_split(
         data["X"],
         data["time"],

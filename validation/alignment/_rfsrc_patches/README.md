@@ -46,7 +46,7 @@ capture trace events to that file. Unset to disable (default).
 - `importancePerm.c.patch` — `vimp_perm tree=T a=feat b=dst_sample c=src_sample`
   emitted in `getPermuteMembership` after the `permute()` call. Used by
   `vimp_perm_replay.py` to replay rfSRC's permutation choices through
-  crforest trees and verify algorithmic equivalence.
+  comprisk trees and verify algorithmic equivalence.
 - `survivalE.c.patch` — Uno IPCW C-index trace, gated on a separate
   `RFSRC_TRACE_UNO=<path>` env var (the per-row volume would drown
   the main `RFSRC_TRACE` stream). Emits three event kinds:

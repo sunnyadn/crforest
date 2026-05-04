@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 
 def _toy(n=200, p=4, seed=0, n_causes=2):
@@ -42,8 +42,8 @@ def test_schema():
 
 
 def test_walker_flat_tree_finds_root_split():
-    from crforest._minimal_depth import _walk_min_depth
-    from crforest._tree_flat import FlatTree
+    from comprisk._minimal_depth import _walk_min_depth
+    from comprisk._tree_flat import FlatTree
 
     forest = _fit(seed=0)
     tree = forest.trees_[0]
@@ -74,7 +74,7 @@ def test_ishwaran_threshold_handcomputed():
       P(md=2) = sentinel mass = (3/4)^3 = 0.421875
       E = 0*0.25 + 1*0.328125 + 2*0.421875 = 0.328125 + 0.84375 = 1.171875 ✓
     """
-    from crforest._minimal_depth import _ishwaran_expected_md
+    from comprisk._minimal_depth import _ishwaran_expected_md
 
     L = np.array([1, 2], dtype=np.int64)
     expected = 1.171875
@@ -85,7 +85,7 @@ def test_ishwaran_threshold_handcomputed():
 def test_ishwaran_threshold_pure_stump():
     """Pure stump (D_T = 0, no internals): every variable trivially gets Dv = 0 = D_T,
     so E[Dv] = 0 (empty sum)."""
-    from crforest._minimal_depth import _ishwaran_expected_md
+    from comprisk._minimal_depth import _ishwaran_expected_md
 
     L = np.array([], dtype=np.int64)
     got = _ishwaran_expected_md(L, max_depth_T=0, n_features=4)
@@ -144,9 +144,9 @@ def test_pure_stump_edge_case():
 
 def test_tree_mode_coverage():
     """Works on default FlatTree, equivalence='rfsrc' (HistTreeNode), mode='reference' (RefTreeNode)."""
-    from crforest._hist_tree import HistTreeNode
-    from crforest._tree import RefTreeNode
-    from crforest._tree_flat import FlatTree
+    from comprisk._hist_tree import HistTreeNode
+    from comprisk._tree import RefTreeNode
+    from comprisk._tree_flat import FlatTree
 
     cols = ["feature", "mean_min_depth", "threshold", "selected"]
 
@@ -215,7 +215,7 @@ def test_paper_figure_3_balanced_tree_mean():
     Bounds allow ±1 around the paper's round-number description to accommodate
     the visual read-off nature of Figure 3.
     """
-    from crforest._minimal_depth import _ishwaran_expected_md
+    from comprisk._minimal_depth import _ishwaran_expected_md
 
     L = np.array([2**d for d in range(10)], dtype=np.int64)
     D_T = 10
@@ -227,7 +227,7 @@ def test_paper_figure_3_balanced_tree_mean():
 
 def test_forest_averaged_threshold_single_tree():
     """With a single tree, forest-averaged threshold equals per-tree E[Dv]."""
-    from crforest._minimal_depth import (
+    from comprisk._minimal_depth import (
         WalkResult,
         _forest_averaged_threshold,
         _ishwaran_expected_md,
@@ -246,7 +246,7 @@ def test_forest_averaged_threshold_single_tree():
 
 def test_forest_averaged_threshold_handles_varying_depth():
     """Trees with different max_depth padded correctly when averaging L."""
-    from crforest._minimal_depth import WalkResult, _forest_averaged_threshold
+    from comprisk._minimal_depth import WalkResult, _forest_averaged_threshold
 
     wr_short = WalkResult(
         min_depth_per_feature=np.array([0, 0, 1, 1], dtype=np.int32),
@@ -319,7 +319,7 @@ def test_rfsrc_var_select_match_follic():
         equivalence="rfsrc",
         random_state=oracle["seed"],
         min_samples_split=30,  # rfSRC nodesize=15 → min_samples_split=2*15 (see equivalence docstring)
-        min_samples_leaf=1,  # remove crforest child-min floor; rfSRC has none
+        min_samples_leaf=1,  # remove comprisk child-min floor; rfSRC has none
         bootstrap=False,  # match rfSRC samp=matrix(1L,...) deterministic full-data fit
         max_depth=None,  # rfSRC has no max-depth cap by default
         n_jobs=1,
@@ -328,13 +328,13 @@ def test_rfsrc_var_select_match_follic():
     forest.feature_names_in_ = feature_cols  # type: ignore[attr-defined]
 
     # Bit-equivalent trees vs rfSRC under matched config + bootstrap=False:
-    #   crforest min_samples_split=2K, min_samples_leaf=1  matches  rfSRC nodesize=K
-    #   crforest bootstrap=False                           matches  rfSRC samp=matrix(1L,...)
-    #   crforest equivalence='rfsrc' (sets time-grid + RNG mode)
+    #   comprisk min_samples_split=2K, min_samples_leaf=1  matches  rfSRC nodesize=K
+    #   comprisk bootstrap=False                           matches  rfSRC samp=matrix(1L,...)
+    #   comprisk equivalence='rfsrc' (sets time-grid + RNG mode)
     #
     # Per-feature mean_min_depth values must match exactly (atol=1e-9). Threshold
-    # scalar value will differ between crforest (paper's forest-averaged, Section 3)
-    # and rfSRC (tree-averaged); only crforest's threshold is asserted via the
+    # scalar value will differ between comprisk (paper's forest-averaged, Section 3)
+    # and rfSRC (tree-averaged); only comprisk's threshold is asserted via the
     # `selected` column in other tests.
     #
     # Known limitation: under bootstrap=True, residual ~0.003 p95 ΔCIF persists

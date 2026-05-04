@@ -1,16 +1,16 @@
 """Falsification test for the grid_mismatch attribution.
 
 Hypothesis: if the dominant cause of the synthetic ntree=1 CIF gap is
-crforest's 256-quantile grid failing to include rfSRC's candidate
-partitions, then running crforest in ``mode="reference"`` (which
+comprisk's 256-quantile grid failing to include rfSRC's candidate
+partitions, then running comprisk in ``mode="reference"`` (which
 evaluates splits at every midpoint between sorted unique values --
 the SAME candidate set rfSRC uses) should collapse the gap.
 
 Compares three cells on synthetic, ntree=1, bootstrap=F, nsplit=0,
 mtry=p, min_samples_split=2, rfSRC ntime=0, seeds 1..10:
 
-  default_mode:  crforest mode="default" (256-quantile bins)
-  reference_mode: crforest mode="reference" (observation-level candidates)
+  default_mode:  comprisk mode="default" (256-quantile bins)
+  reference_mode: comprisk mode="reference" (observation-level candidates)
 
 Report: per-seed p95 |cr - rf| over the test fold's CIF on cause 1,
 aggregated to cross_p95_cif. If reference_mode >> default_mode:
@@ -32,7 +32,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
 from validation.alignment.equivalence_gate import (
     build_reference_grid,

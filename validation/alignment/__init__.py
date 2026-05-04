@@ -1,4 +1,4 @@
-"""Maintainer-only alignment harness comparing crforest to randomForestSRC.
+"""Maintainer-only alignment harness comparing comprisk to randomForestSRC.
 
 Not shipped in the public wheel (inherits validation/'s maintainer-only status).
 

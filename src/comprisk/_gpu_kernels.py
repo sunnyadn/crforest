@@ -985,7 +985,7 @@ def build_flat_tree_gpu(
     tie-break — no opt-in flag needed."""
     import cupy as cp
 
-    from crforest._tree_flat import FlatTree
+    from comprisk._tree_flat import FlatTree
 
     rng = np.random.default_rng(seed)
     p = X_binned.shape[1]

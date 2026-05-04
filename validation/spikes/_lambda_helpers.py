@@ -73,8 +73,8 @@ def make_synthetic(n: int, p: int, seed: int):
 def score_four_cindex(forest, X_te, t_te, e_te, w_te) -> dict:
     """Compute HF/Death × Harrell/Uno on a fitted forest. Returns a dict
     with keys hf_harrell, death_harrell, hf_uno, death_uno."""
-    from crforest import concordance_index_cr
-    from crforest.metrics import concordance_index_uno_cr
+    from comprisk import concordance_index_cr
+    from comprisk.metrics import concordance_index_uno_cr
 
     r1 = forest.predict_risk(X_te, cause=1)
     r2 = forest.predict_risk(X_te, cause=2)

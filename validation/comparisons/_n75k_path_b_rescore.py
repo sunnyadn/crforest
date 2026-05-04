@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import concordance_index_cr
+from comprisk import concordance_index_cr
 
 BENCH_PARQUET = Path("/tmp/n75k_path_b.parquet")
 CHF_PARQUET = Path("/tmp/chf_2012_clean.parquet")
@@ -49,8 +49,8 @@ def main() -> None:
         df.at[i, "c1_unified"] = concordance_index_cr(e_te, t_te, r1, cause=1)
         df.at[i, "c2_unified"] = concordance_index_cr(e_te, t_te, r2, cause=2)
 
-    # crforest cells use concordance_index_cr already → c1_unified == harrell_c1.
-    cr_mask = df["lib"] == "crforest"
+    # comprisk cells use concordance_index_cr already → c1_unified == harrell_c1.
+    cr_mask = df["lib"] == "comprisk"
     df.loc[cr_mask, "c1_unified"] = df.loc[cr_mask, "harrell_c1"]
     df.loc[cr_mask, "c2_unified"] = df.loc[cr_mask, "harrell_c2"]
 
@@ -63,7 +63,7 @@ def main() -> None:
             if (r["lib"] == "rfsrc" and r["rf_cores"] == 1)
             else "rfsrc_on"
             if r["lib"] == "rfsrc"
-            else "crforest"
+            else "comprisk"
         ),
         axis=1,
     )

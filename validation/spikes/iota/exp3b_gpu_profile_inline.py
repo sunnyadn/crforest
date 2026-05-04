@@ -41,15 +41,15 @@ def _make_profiled_builder():
     """
     import cupy as cp
 
-    from crforest._estimators import aalen_johansen_from_counts
-    from crforest._gpu_kernels import (
+    from comprisk._estimators import aalen_johansen_from_counts
+    from comprisk._gpu_kernels import (
         _accumulate_leaf_cpu,
         _build_cand_mask,
         _partition_inplace,
         best_split_kernel_per_node,
         histogram_kernel_per_level,
     )
-    from crforest._tree_flat import FlatTree
+    from comprisk._tree_flat import FlatTree
 
     profile = defaultdict(float)  # stage -> total ms
     counts = defaultdict(int)
@@ -399,8 +399,8 @@ def main():
     t = rng.exponential(1.0, n) + 0.1
     e = rng.integers(0, 3, n)
 
-    from crforest import CompetingRiskForest
-    from crforest import _gpu_kernels as _gk
+    from comprisk import CompetingRiskForest
+    from comprisk import _gpu_kernels as _gk
 
     # Warm-up: compile kernels, prime memory pool
     print("[warm] compile kernels + prime memory pool ...", flush=True)

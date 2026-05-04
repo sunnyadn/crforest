@@ -1,7 +1,7 @@
 # κ.exp2 — rfSRC counterpart to exp1.
 #
 # Reads the SAME preprocessed parquet + train/test indices that exp1 dumped
-# to /tmp, fits randomForestSRC with hyperparams aligned to crforest's
+# to /tmp, fits randomForestSRC with hyperparams aligned to comprisk's
 # defaults (ntree=100, mtry=ceil(sqrt(p)), nodesize=3, nsplit=10, swor),
 # computes holdout cause-1/cause-2 Harrell's C-index, prints wall-time.
 #
@@ -43,7 +43,7 @@ fit <- rfsrc(
   Surv(time, status) ~ ., data = train_df,
   ntree = 100,
   mtry = mtry_val,
-  nodesize = 3,            # crforest min_samples_leaf=3 equivalent
+  nodesize = 3,            # comprisk min_samples_leaf=3 equivalent
   nsplit = 10,
   samptype = "swor",
   importance = "none",

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from validation.datasets import load as load_dataset
 
-from crforest.forest import CompetingRiskForest
+from comprisk.forest import CompetingRiskForest
 from tests._tree_walkers import walk_tree
 
 

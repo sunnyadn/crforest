@@ -1,10 +1,10 @@
-"""Sweep: default vs reference crforest modes, CIF gap + fit-time vs rfSRC.
+"""Sweep: default vs reference comprisk modes, CIF gap + fit-time vs rfSRC.
 
 Runs production-like config (bootstrap=True, mtry=sqrt(p), nsplit=0) on all
 four paired-seed datasets across a small number of seeds, recording both:
 
 - cross-lib p95 CIF gap on the reference event-time grid
-- wall-clock fit time for each of (crforest default, crforest reference, rfSRC)
+- wall-clock fit time for each of (comprisk default, comprisk reference, rfSRC)
 
 Purpose: the equivalence-vs-performance tradeoff requires both numbers in
 the same table to make a ship decision.
@@ -24,7 +24,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
 from validation.alignment.equivalence_gate import (
     build_reference_grid,
@@ -84,7 +84,7 @@ def _fit_rfsrc(
     return ti, cif, fit_wall
 
 
-def _fit_crforest(X_train, time_train, event_train, X_test, seed, n_estimators, mode):
+def _fit_comprisk(X_train, time_train, event_train, X_test, seed, n_estimators, mode):
     kwargs = dict(
         n_estimators=n_estimators,
         min_samples_leaf=1,
@@ -119,8 +119,8 @@ def run_cell(dataset: str, seed: int, n_estimators: int) -> dict:
     X_tr, t_tr, e_tr = X[train_idx], time_all[train_idx], event_all[train_idx]
     X_te = X[test_idx]
 
-    grid_def, cif_def, t_def = _fit_crforest(X_tr, t_tr, e_tr, X_te, seed, n_estimators, "default")
-    grid_ref, cif_ref, t_ref = _fit_crforest(
+    grid_def, cif_def, t_def = _fit_comprisk(X_tr, t_tr, e_tr, X_te, seed, n_estimators, "default")
+    grid_ref, cif_ref, t_ref = _fit_comprisk(
         X_tr, t_tr, e_tr, X_te, seed, n_estimators, "reference"
     )
     grid_rf, cif_rf, t_rf = _fit_rfsrc(X_tr, t_tr, e_tr, X_te, seed, n_estimators)

@@ -1,6 +1,6 @@
 """Phase 1 validation: production config with rng_mode='rfsrc_aligned'.
 
-Tests whether aligning crforest's mtry + nsplit RNG draws with rfSRC's
+Tests whether aligning comprisk's mtry + nsplit RNG draws with rfSRC's
 ran1 stream B closes the production cross-lib gap.
 
 Previous evidence:
@@ -8,7 +8,7 @@ Previous evidence:
 - Z cell (all RNG removed/aligned, mtry=p, nsplit=0) = 0.0054 / 0.0127.
 - Bootstrap-alignment alone = ~1.5% reduction (rules out stream A).
 
-Phase 1 hypothesis: crforest(`rng_mode='rfsrc_aligned'`) at production
+Phase 1 hypothesis: comprisk(`rng_mode='rfsrc_aligned'`) at production
 defaults should close cross-lib gap to ~0.005 range, matching the Z
 floor.
 
@@ -20,13 +20,13 @@ Result (2026-04-24, 10 seeds, rng_mode='rfsrc_aligned'):
 | follic  | 0.0457    | 0.0465        | ~noise   |
 
 **Hypothesis not yet confirmed or refuted.** A ntree=1 diagnostic on
-hd seed=0 shows crforest(rfsrc_aligned) picks a different root split
+hd seed=0 shows comprisk(rfsrc_aligned) picks a different root split
 (feature=2, threshold=1.5) from rfSRC (feature=0, threshold=54.74) --
 the RNG algorithm + per-tree seeding are correctly aligned (ran1
-port verified against C to float32 precision), but crforest's per-
+port verified against C to float32 precision), but comprisk's per-
 node **call order** differs from rfSRC's:
 
-  - crforest: draw all mtry features upfront, then for each feature
+  - comprisk: draw all mtry features upfront, then for each feature
     draw nsplit candidates.
   - rfSRC: interleave -- draw ONE feature, eval split (with nsplit
     draws), draw NEXT feature, eval, ...
@@ -46,7 +46,7 @@ import time as _time
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment.equivalence_gate import (
     aggregate_dataset,
     build_reference_grid,
@@ -56,7 +56,7 @@ from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
 
 
-def _fit_crforest_aligned(X_tr, t_tr, e_tr, X_te, *, seed: int) -> dict:
+def _fit_comprisk_aligned(X_tr, t_tr, e_tr, X_te, *, seed: int) -> dict:
     forest = CompetingRiskForest(
         n_estimators=500,
         min_samples_leaf=1,
@@ -132,7 +132,7 @@ def run_cell(dataset: str, seed: int) -> dict:
         f"[rfsrc_aligned ds={dataset} seed={seed}] cr_fit_start n_train={len(train_idx)} p={p}",
         flush=True,
     )
-    cr = _fit_crforest_aligned(
+    cr = _fit_comprisk_aligned(
         X[train_idx], time[train_idx], event[train_idx], X[test_idx], seed=seed
     )
     print(

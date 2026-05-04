@@ -10,7 +10,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from crforest.forest import CompetingRiskForest
+from comprisk.forest import CompetingRiskForest
 
 
 @st.composite

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from crforest.metrics import concordance_index_cr
+from comprisk.metrics import concordance_index_cr
 
 
 def test_perfect_ordering_returns_one():
@@ -164,7 +164,7 @@ def _naive_compute_uno_weights(
 
 
 def test_compute_uno_weights_all_cause_one_yields_unit_weights():
-    from crforest.metrics import compute_uno_weights
+    from comprisk.metrics import compute_uno_weights
 
     # rfSRC's km_censor_fit treats cause-1 specially (s==1 → "death", removed
     # first), so all-cause-1 means d_other == 0 everywhere → G stays at 1.
@@ -177,7 +177,7 @@ def test_compute_uno_weights_all_cause_one_yields_unit_weights():
 
 
 def test_compute_uno_weights_naive_ref_mixed():
-    from crforest.metrics import compute_uno_weights
+    from comprisk.metrics import compute_uno_weights
 
     rng = np.random.default_rng(0)
     n = 200
@@ -191,7 +191,7 @@ def test_compute_uno_weights_naive_ref_mixed():
 
 
 def test_compute_uno_weights_naive_ref_high_censoring():
-    from crforest.metrics import compute_uno_weights
+    from comprisk.metrics import compute_uno_weights
 
     rng = np.random.default_rng(1)
     n = 100
@@ -205,7 +205,7 @@ def test_compute_uno_weights_naive_ref_high_censoring():
 
 
 def test_compute_uno_weights_naive_ref_competing_risks():
-    from crforest.metrics import compute_uno_weights
+    from comprisk.metrics import compute_uno_weights
 
     rng = np.random.default_rng(2)
     n = 150
@@ -221,7 +221,7 @@ def test_compute_uno_weights_naive_ref_competing_risks():
 
 
 def test_compute_uno_weights_gmin_none_disables_gating():
-    from crforest.metrics import compute_uno_weights
+    from comprisk.metrics import compute_uno_weights
 
     rng = np.random.default_rng(3)
     n = 100
@@ -235,7 +235,7 @@ def test_compute_uno_weights_gmin_none_disables_gating():
 
 
 def test_compute_uno_weights_eps_keep_for_gated_out():
-    from crforest.metrics import compute_uno_weights
+    from comprisk.metrics import compute_uno_weights
 
     # Construct: 4 early events, 95 censored interleaved before time 100,
     # then one late event at t=100 with G(t-) = 1/96 ≫ 1 weight.
@@ -250,7 +250,7 @@ def test_compute_uno_weights_eps_keep_for_gated_out():
 
 
 def test_compute_uno_weights_handles_single_observation():
-    from crforest.metrics import compute_uno_weights
+    from comprisk.metrics import compute_uno_weights
 
     w = compute_uno_weights(np.array([1.0]), np.array([1]))
     assert w.shape == (1,)
@@ -258,7 +258,7 @@ def test_compute_uno_weights_handles_single_observation():
 
 
 def test_compute_uno_weights_handles_all_censored():
-    from crforest.metrics import compute_uno_weights
+    from comprisk.metrics import compute_uno_weights
 
     time = np.array([1.0, 2.0, 3.0])
     event = np.array([0, 0, 0])
@@ -380,7 +380,7 @@ def _naive_concordance_index_uno_cr(event, time, estimate, *, cause, weights, ep
 
 
 def test_concordance_index_uno_cr_perfect_ranking():
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     event = np.array([1, 1, 1, 1])
     time = np.array([1.0, 2.0, 3.0, 4.0])
@@ -390,7 +390,7 @@ def test_concordance_index_uno_cr_perfect_ranking():
 
 
 def test_concordance_index_uno_cr_anti_ranking():
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     event = np.array([1, 1, 1, 1])
     time = np.array([1.0, 2.0, 3.0, 4.0])
@@ -400,7 +400,7 @@ def test_concordance_index_uno_cr_anti_ranking():
 
 
 def test_concordance_index_uno_cr_all_tied_estimate():
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     event = np.array([1, 1, 1, 1])
     time = np.array([1.0, 2.0, 3.0, 4.0])
@@ -410,7 +410,7 @@ def test_concordance_index_uno_cr_all_tied_estimate():
 
 
 def test_concordance_index_uno_cr_no_events_returns_nan():
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     event = np.array([2, 2, 0, 0])
     time = np.array([1.0, 2.0, 3.0, 4.0])
@@ -421,7 +421,7 @@ def test_concordance_index_uno_cr_no_events_returns_nan():
 
 
 def test_concordance_index_uno_cr_naive_ref_no_censoring():
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     rng = np.random.default_rng(10)
     n = 80
@@ -436,7 +436,7 @@ def test_concordance_index_uno_cr_naive_ref_no_censoring():
 
 
 def test_concordance_index_uno_cr_naive_ref_mixed_censoring():
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     rng = np.random.default_rng(11)
     n = 100
@@ -454,7 +454,7 @@ def test_concordance_index_uno_cr_naive_ref_mixed_censoring():
 
 
 def test_concordance_index_uno_cr_naive_ref_with_time_ties():
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     rng = np.random.default_rng(12)
     n = 60
@@ -472,7 +472,7 @@ def test_concordance_index_uno_cr_naive_ref_with_time_ties():
 
 
 def test_concordance_index_uno_cr_zero_weights_filtered():
-    from crforest.metrics import concordance_index_uno_cr
+    from comprisk.metrics import concordance_index_uno_cr
 
     event = np.array([1, 1, 0, 0])
     time = np.array([1.0, 2.0, 3.0, 4.0])
@@ -484,7 +484,7 @@ def test_concordance_index_uno_cr_zero_weights_filtered():
 
 
 def test_concordance_index_uno_cr_empty_input_returns_nan():
-    from crforest.metrics import concordance_index_uno_cr
+    from comprisk.metrics import concordance_index_uno_cr
 
     c = concordance_index_uno_cr(
         np.array([1]),

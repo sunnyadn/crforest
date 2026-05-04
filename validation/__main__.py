@@ -127,13 +127,13 @@ def main(argv: list[str] | None = None) -> None:
         "--compare",
         choices=["rfsrc", "reference"],
         default="rfsrc",
-        help="baseline to compare crforest against (default: rfsrc)",
+        help="baseline to compare comprisk against (default: rfsrc)",
     )
     p_run.add_argument(
         "--splitrule",
         choices=["logrankCR", "logrank"],
         default="logrankCR",
-        help="split rule for crforest and rfsrc baseline selection (default: logrankCR)",
+        help="split rule for comprisk and rfsrc baseline selection (default: logrankCR)",
     )
     p_run.add_argument(
         "--cause",

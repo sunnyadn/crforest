@@ -1,4 +1,4 @@
-"""Tests for crforest._importance and forest.compute_importance."""
+"""Tests for comprisk._importance and forest.compute_importance."""
 
 from __future__ import annotations
 
@@ -7,13 +7,13 @@ import pandas as pd
 import pytest
 from sklearn.inspection import permutation_importance as sk_permutation_importance
 
-from crforest._importance import (
+from comprisk._importance import (
     _assemble_df,
     _compute_importance_impl,
     _make_cause_scorer,
     _weighted_mean,
 )
-from crforest.forest import CompetingRiskForest
+from comprisk.forest import CompetingRiskForest
 
 
 def _make_y(time, event):

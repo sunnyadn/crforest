@@ -1,12 +1,12 @@
 """κ.exp6 — test 'binning quantization causes Q1 early-death gap' hypothesis.
 
-κ.exp5 found rfSRC outperforms crforest on early-death pairs (Q1: t<66 days,
-gap −0.035) but crforest reverses at late deaths (Q4: t≥1419 days, gap +0.009).
-Hypothesis: crforest's default 256-bin histogram quantizes extreme feature
+κ.exp5 found rfSRC outperforms comprisk on early-death pairs (Q1: t<66 days,
+gap −0.035) but comprisk reverses at late deaths (Q4: t≥1419 days, gap +0.009).
+Hypothesis: comprisk's default 256-bin histogram quantizes extreme feature
 values present in early-death (high-acuity) patients; rfSRC's exact split
 candidates retain sub-bin distinctions.
 
-Test: refit crforest with n_bins ∈ {256, 512, 1024} on seed=42, re-run the
+Test: refit comprisk with n_bins ∈ {256, 512, 1024} on seed=42, re-run the
 quartile diagnostic. If hypothesis is right, Q1 gap should shrink monotonically
 with more bins.
 
@@ -21,14 +21,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest, concordance_index_cr
+from comprisk import CompetingRiskForest, concordance_index_cr
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 TRAIN_IDX = Path("/tmp/chf_2012_train_idx.txt")
 TEST_IDX = Path("/tmp/chf_2012_test_idx.txt")
 RF_RISKS = Path("/tmp/chf_2012_rfsrc_risks_multiseed.parquet")
 
-# crforest caps n_bins at 256 (uint8 bin index); test reverse direction:
+# comprisk caps n_bins at 256 (uint8 bin index); test reverse direction:
 # at coarser binning (64, 128), if hypothesis is right the Q1 gap should
 # WORSEN (gap becomes more negative).
 N_BINS_LIST = [256, 128, 64]

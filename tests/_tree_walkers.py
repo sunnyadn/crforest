@@ -1,13 +1,13 @@
 """Shared tree-serialization helpers for tree-equivalence tests.
 
-The crforest project has three tree representations that may need pre-order
+The comprisk project has three tree representations that may need pre-order
 DFS serialization in determinism / parallel-equivalence / regression tests:
 
-- ``FlatTree`` (``crforest._tree_flat``) — array-of-records, default-mode
+- ``FlatTree`` (``comprisk._tree_flat``) — array-of-records, default-mode
   flat-tree builder output.
-- ``HistTreeNode`` (``crforest._hist_tree``) — recursive, used by the
+- ``HistTreeNode`` (``comprisk._hist_tree``) — recursive, used by the
   ``equivalence='rfsrc'`` aligned path.
-- ``RefTreeNode`` (``crforest._tree``) — recursive, used by the float-mode
+- ``RefTreeNode`` (``comprisk._tree``) — recursive, used by the float-mode
   reference path.
 
 Each leaf format includes raw leaf content (not predicted CIF/CHF) so a
@@ -36,9 +36,9 @@ def walk_tree(tree) -> list:
     - ``RefTreeNode``: ``("leaf", event_counts_bytes, at_risk_bytes)`` —
       raw counts.
     """
-    from crforest._hist_tree import HistTreeNode
-    from crforest._tree import RefTreeNode
-    from crforest._tree_flat import FlatTree
+    from comprisk._hist_tree import HistTreeNode
+    from comprisk._tree import RefTreeNode
+    from comprisk._tree_flat import FlatTree
 
     if isinstance(tree, FlatTree):
         out: list = []

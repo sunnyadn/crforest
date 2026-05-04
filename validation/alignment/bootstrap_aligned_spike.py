@@ -1,6 +1,6 @@
 """Bootstrap-aligned alignment test (one-shot spike).
 
-Replicates crforest's per-tree bootstrap via numpy RandomState, converts to a
+Replicates comprisk's per-tree bootstrap via numpy RandomState, converts to a
 (n, ntree) in-bag counts matrix, and passes it to rfSRC via
 bootstrap="by.user", samp=<matrix>. Everything else at production defaults
 (mtry=sqrt, nsplit=10, ntree=500, split_ntime=50).
@@ -33,7 +33,7 @@ import time as _time
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
 from validation.alignment.equivalence_gate import (
     aggregate_dataset,
@@ -44,14 +44,14 @@ from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
 
 
-def _crforest_inbag_counts(n: int, ntree: int, seed: int) -> np.ndarray:
-    """Replicate crforest's per-tree bootstrap as a (n, ntree) int32 counts matrix."""
+def _comprisk_inbag_counts(n: int, ntree: int, seed: int) -> np.ndarray:
+    """Replicate comprisk's per-tree bootstrap as a (n, ntree) int32 counts matrix."""
     rng = np.random.RandomState(seed)
     counts = np.zeros((n, ntree), dtype=np.int32)
     for t in range(ntree):
         idx = rng.choice(n, size=n, replace=True)
         counts[:, t] = np.bincount(idx, minlength=n).astype(np.int32)
-        _ = rng.randint(0, 2**31)  # advance rng same way crforest does
+        _ = rng.randint(0, 2**31)  # advance rng same way comprisk does
     return counts
 
 
@@ -72,7 +72,7 @@ def run_cell(dataset: str, seed: int, *, ntree: int = 500) -> dict:
     n_tr = len(train_idx)
     p = X.shape[1]
 
-    # crforest fit -- normal production config.
+    # comprisk fit -- normal production config.
     t0 = _time.perf_counter()
     print(f"[bootstrap_aligned ds={dataset} seed={seed}] cr_fit_start n_train={n_tr}", flush=True)
     forest = CompetingRiskForest(
@@ -93,7 +93,7 @@ def run_cell(dataset: str, seed: int, *, ntree: int = 500) -> dict:
     )
 
     # Build matching in-bag matrix via the same numpy RNG recipe.
-    inbag = _crforest_inbag_counts(n_tr, ntree, seed)
+    inbag = _comprisk_inbag_counts(n_tr, ntree, seed)
 
     feat_cols = [f"x{j}" for j in range(p)]
     train_df = pd.DataFrame(X[train_idx], columns=feat_cols)

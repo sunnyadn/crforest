@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from sklearn.exceptions import NotFittedError
 
-from crforest.forest import CompetingRiskForest
+from comprisk.forest import CompetingRiskForest
 
 
 def _toy_data(n=60, seed=0):

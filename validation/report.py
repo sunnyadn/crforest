@@ -14,7 +14,7 @@ PASS_THRESHOLD = 0.01
 REPORT_COLUMNS = [
     "dataset",
     "n_seeds",
-    "median_c_crforest",
+    "median_c_comprisk",
     "median_c_rfsrc",
     "median_delta_c",
     "iqr_delta_c",
@@ -33,7 +33,7 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
     grouped = df.groupby("dataset", sort=False)
     out = grouped.agg(
         n_seeds=("seed", "size"),
-        median_c_crforest=("c_crforest", "median"),
+        median_c_comprisk=("c_comprisk", "median"),
         median_c_rfsrc=("c_rfsrc", "median"),
         median_delta_c=("delta_c", "median"),
         iqr_delta_c=("delta_c", lambda s: float(np.quantile(s, 0.75) - np.quantile(s, 0.25))),
@@ -53,11 +53,11 @@ def write_report(
     """Write the markdown report to ``path``."""
     path = Path(path)
     lines = [
-        "# crforest vs randomForestSRC — paired-seed validation",
+        "# comprisk vs randomForestSRC — paired-seed validation",
         "",
         f"Run: {run_date}",
         f"Seeds per dataset: {n_seeds}",
-        f"crforest commit: {commit}",
+        f"comprisk commit: {commit}",
         "",
         "| Dataset | Seeds | Median C_cr | Median C_rfSRC | Median ΔC | IQR ΔC | Max |ΔC| | Pass |",
         "|---------|-------|-------------|----------------|-----------|--------|----------|------|",
@@ -66,7 +66,7 @@ def write_report(
         mark = "✓" if bool(row["pass"]) else "⚠ follow-up"
         lines.append(
             f"| {row['dataset']} | {int(row['n_seeds'])} "
-            f"| {row['median_c_crforest']:.3f} "
+            f"| {row['median_c_comprisk']:.3f} "
             f"| {row['median_c_rfsrc']:.3f} "
             f"| {row['median_delta_c']:+.3f} "
             f"| {row['iqr_delta_c']:.3f} "

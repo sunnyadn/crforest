@@ -11,7 +11,7 @@ sequences in DFS lockstep.
 At each step:
   - "in_sync": same depth and same size → the two libs are looking
     at the same population at the same tree position.
-  - partition agreement: compare crforest's chosen left-size with
+  - partition agreement: compare comprisk's chosen left-size with
     rfSRC's chosen left-size. If same, both libs send the same
     samples left; no downstream divergence is introduced here.
   - first real divergence: first in-sync node where the winner
@@ -40,8 +40,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
-from crforest._binning import apply_bins
+from comprisk import CompetingRiskForest
+from comprisk._binning import apply_bins
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -86,7 +86,7 @@ def _parse_nodes(path: Path, rfsrc_fmt: bool) -> list[dict]:
                 continue
             m = FEAT_RE_CR.match(line)
             if m and cur is not None:
-                # crforest stat is num^2/var; convert to z-scale for rf comparison.
+                # comprisk stat is num^2/var; convert to z-scale for rf comparison.
                 z_sq = float(m.group(3))
                 z = float(np.sqrt(max(z_sq, 0.0)))
                 cur["stats"].append((int(m.group(1)), int(m.group(2)), z))
@@ -180,7 +180,7 @@ def run_one(dataset: str, seed: int) -> dict:
     _infer_left_sizes(cr_nodes)
     _infer_left_sizes(rf_nodes)
 
-    # Compute per-feature unique left-sizes in crforest's 256-quantile grid
+    # Compute per-feature unique left-sizes in comprisk's 256-quantile grid
     # for the root. This is how we classify "grid_mismatch" at the root.
     X_binned = apply_bins(X[train_idx], forest.bin_edges_).astype(np.int64)
     cr_left_sizes_per_feat: dict[int, set[int]] = {}

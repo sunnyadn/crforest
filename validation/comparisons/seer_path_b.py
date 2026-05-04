@@ -1,4 +1,4 @@
-"""Paired rfSRC OMP-on vs crforest matched-pair on SEER breast cancer.
+"""Paired rfSRC OMP-on vs comprisk matched-pair on SEER breast cancer.
 
 Mirrors the n75k_path_b harness structure for cross-dataset comparison.
 Reads the staged SEER cohort at /tmp/seer_breast_*.parquet (run
@@ -8,9 +8,9 @@ Each (lib, seed) cell runs in its own subprocess wrapped by `/usr/bin/time -v`
 so peak RSS is measured uniformly. Reports mean ± std across seeds for
 fit_wall, peak_rss_gb, and Harrell C-index for both competing causes.
 
-Run on a Linux box with rfSRC + crforest installed:
+Run on a Linux box with rfSRC + comprisk installed:
   PYTHONUNBUFFERED=1 python -u validation/comparisons/seer_path_b.py \\
-    --seeds 42,43,44 --cells rfsrc_on,crforest
+    --seeds 42,43,44 --cells rfsrc_on,comprisk
 
 For memory-constrained boxes (rfSRC at full n=238k needs ~55GB), regenerate
 the cohort with `gen_seer_breast.py --subsample 75000` first.
@@ -53,12 +53,12 @@ def _emit(row: dict) -> None:
     print("RESULT_JSON " + json.dumps(row), flush=True)
 
 
-def child_crforest(seed: int, n_jobs: int) -> None:
-    """Single crforest fit on staged SEER cohort."""
+def child_comprisk(seed: int, n_jobs: int) -> None:
+    """Single comprisk fit on staged SEER cohort."""
     import numpy as np
     import pandas as pd
 
-    from crforest import CompetingRiskForest, concordance_index_cr
+    from comprisk import CompetingRiskForest, concordance_index_cr
 
     df = pd.read_parquet(DATA_PATH)
     train_idx = np.loadtxt(TRAIN_IDX, dtype=np.int64)
@@ -81,7 +81,7 @@ def child_crforest(seed: int, n_jobs: int) -> None:
 
     _emit(
         {
-            "lib": "crforest",
+            "lib": "comprisk",
             "seed": seed,
             "rf_cores": -1,
             "fit_wall": wall,
@@ -95,7 +95,7 @@ def run_cell(*, lib: str, seed: int, rf_cores: int, timeout_s: int) -> dict:
     """Spawn time -v subprocess for one fit. Returns parsed row + RSS."""
     if lib == "rfsrc":
         cmd = ["/usr/bin/time", "-v", "Rscript", str(RFSRC_R), str(seed), str(rf_cores)]
-    elif lib == "crforest":
+    elif lib == "comprisk":
         cmd = [
             "/usr/bin/time",
             "-v",
@@ -154,7 +154,7 @@ def run_cell(*, lib: str, seed: int, rf_cores: int, timeout_s: int) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--child", action="store_true", help="(internal) run crforest cell")
+    parser.add_argument("--child", action="store_true", help="(internal) run comprisk cell")
     parser.add_argument("--seed", type=int)
     parser.add_argument("--n-jobs", type=int, default=-1)
     parser.add_argument("--seeds", default="42,43,44", help="comma-sep seeds; default 3")
@@ -173,14 +173,14 @@ def main() -> None:
     parser.add_argument("--out", default="/tmp/seer_path_b.parquet")
     parser.add_argument(
         "--cells",
-        default="rfsrc_on,crforest",
-        help="comma-sep subset of {rfsrc_on, crforest}",
+        default="rfsrc_on,comprisk",
+        help="comma-sep subset of {rfsrc_on, comprisk}",
     )
     parser.add_argument("--machine", default=platform.node())
     args = parser.parse_args()
 
     if args.child:
-        child_crforest(args.seed, args.n_jobs)
+        child_comprisk(args.seed, args.n_jobs)
         return
 
     if not DATA_PATH.exists():
@@ -202,8 +202,8 @@ def main() -> None:
     cell_specs = []
     if "rfsrc_on" in cells:
         cell_specs += [("rfsrc", s, args.cores_on) for s in seeds]
-    if "crforest" in cells:
-        cell_specs += [("crforest", s, -1) for s in seeds]
+    if "comprisk" in cells:
+        cell_specs += [("comprisk", s, -1) for s in seeds]
 
     rows = []
     for i, (lib, seed, cores) in enumerate(cell_specs, 1):
@@ -226,7 +226,7 @@ def main() -> None:
     ok = df[df["status"] == "ok"].copy()
     if len(ok):
         ok["cell"] = ok.apply(
-            lambda r: "rfsrc_on" if r["lib"] == "rfsrc" else "crforest",
+            lambda r: "rfsrc_on" if r["lib"] == "rfsrc" else "comprisk",
             axis=1,
         )
         agg = (

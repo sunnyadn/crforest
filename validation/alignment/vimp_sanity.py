@@ -1,7 +1,7 @@
-"""Synthetic-data sanity benchmark for crforest OOB permutation VIMP.
+"""Synthetic-data sanity benchmark for comprisk OOB permutation VIMP.
 
 Independent of rfSRC: generates competing-risks data with KNOWN signal features
-and measures whether crforest VIMP separates them from noise. This is the
+and measures whether comprisk VIMP separates them from noise. This is the
 strongest "implementation correctness" check we have, since it doesn't rely on
 matching another library — it asserts the algorithm correctly identifies the
 features the data-generating process actually used.
@@ -45,7 +45,7 @@ import pandas as pd
 from scipy.stats import rankdata
 from sklearn.metrics import roc_auc_score
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 
 def _print(msg: str) -> None:

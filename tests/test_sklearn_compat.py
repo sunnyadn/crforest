@@ -18,7 +18,7 @@ from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import KFold, cross_val_score
 
-from crforest import CompetingRiskForest, Surv
+from comprisk import CompetingRiskForest, Surv
 
 
 def _toy_cr(n: int = 200, p: int = 5, seed: int = 0):

@@ -1,4 +1,4 @@
-"""Cell-by-cell comparison of ensemble OOB mortality between crforest and rfSRC
+"""Cell-by-cell comparison of ensemble OOB mortality between comprisk and rfSRC
 on the same paired-bootstrap forest.
 
 Sweeps over (dataset, ntree, seed). Reports per-sample Spearman/Pearson +
@@ -19,8 +19,8 @@ from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr
 from scipy.stats import pearsonr, spearmanr
 
-from crforest import CompetingRiskForest
-from crforest._importance import _ensemble_oob_predictions
+from comprisk import CompetingRiskForest
+from comprisk._importance import _ensemble_oob_predictions
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR

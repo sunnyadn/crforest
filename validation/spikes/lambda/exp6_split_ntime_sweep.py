@@ -17,7 +17,7 @@ HF/Death Harrell + Uno + wall.
 Decision: if split_ntime=20 keeps Δ HF Harrell within seed-noise (±0.0005),
 ship it as the new default. Free 2-3× speedup, no algorithm change.
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra dev \\
        python -u validation/spikes/lambda/exp6_split_ntime_sweep.py \\
        2>&1 | tee /tmp/lambda_exp6.log'
@@ -36,8 +36,8 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from _lambda_helpers import load_chf, score_four_cindex
 
-from crforest import CompetingRiskForest
-from crforest.metrics import compute_uno_weights
+from comprisk import CompetingRiskForest
+from comprisk.metrics import compute_uno_weights
 
 OUT = Path("/tmp/lambda_exp6_split_ntime.parquet")
 SPLIT_NTIME_VALUES = [None, 50, 30, 20, 10, 5]

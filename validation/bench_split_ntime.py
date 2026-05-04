@@ -39,8 +39,8 @@ def main() -> None:
     rows = []
     for dataset, gco in dco.groupby("dataset"):
         gno = dno[dno["dataset"] == dataset]
-        delta_co = gco["c_crforest"].values - gco["c_rfsrc"].values
-        delta_no = gno["c_crforest"].values - gno["c_rfsrc"].values
+        delta_co = gco["c_comprisk"].values - gco["c_rfsrc"].values
+        delta_no = gno["c_comprisk"].values - gno["c_rfsrc"].values
         rfsrc_c = gco["c_rfsrc"].values
         rows.append(
             dict(

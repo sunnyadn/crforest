@@ -25,7 +25,7 @@ pytestmark = pytest.mark.gpu
 
 
 def _run(device, seed, X, time, event):
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     f = CompetingRiskForest(
         n_estimators=20,

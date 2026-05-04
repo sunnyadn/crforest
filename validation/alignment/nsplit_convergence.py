@@ -3,7 +3,7 @@
 Spec: docs/superpowers/specs/2026-04-24-nsplit-convergence-design.md
 Follows from: project_equivalence_hd_tail_diagnostic.
 
-Fixes rfSRC at nsplit=10 and sweeps crforest nsplit over {10, 32, 100, 0}
+Fixes rfSRC at nsplit=10 and sweeps comprisk nsplit over {10, 32, 100, 0}
 on one dataset, reading the cross_p95 trend against the gate's noise floor.
 Monotone shrink to within-noise-floor at nsplit=0 would confirm the
 histogram-boundary explanation for the hd/follic hard-cap failures.
@@ -83,16 +83,16 @@ def _write_report(
     path: Path,
 ) -> None:
     lines = [
-        "# nsplit convergence — crforest vs rfSRC",
+        "# nsplit convergence — comprisk vs rfSRC",
         "",
         f"Timestamp: {header['timestamp']}",
         f"Dataset: `{dataset}`  |  seeds: {header['n_seeds']}  |  rfSRC fixed at nsplit=10",
-        f"crforest commit: {header['commit_sha']}  |  machine: {header['machine']}",
+        f"comprisk commit: {header['commit_sha']}  |  machine: {header['machine']}",
         f"Hard cap: {header['hard_cap']}",
         "",
         "## Trend table",
         "",
-        "| crforest nsplit | cross_p95_risk | cross_p95_cif | within_cr_p95_risk "
+        "| comprisk nsplit | cross_p95_risk | cross_p95_cif | within_cr_p95_risk "
         "| within_rf_p95_risk | within_cr_p95_cif | within_rf_p95_cif | "
         "noise_floor_risk | hard_cap_risk | noise_floor_cif | hard_cap_cif |",
         "|---|---|---|---|---|---|---|---|---|---|---|",
@@ -129,7 +129,7 @@ def _write_report(
                 q_header,
                 q_sep,
                 _qrow("cross-lib", q[f"cross_{metric}"]),
-                _qrow("within crforest", q[f"within_cr_{metric}"]),
+                _qrow("within comprisk", q[f"within_cr_{metric}"]),
                 _qrow("within rfSRC", q[f"within_rf_{metric}"]),
             ]
 

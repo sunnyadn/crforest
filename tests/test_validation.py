@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from crforest._validation import check_inputs
+from comprisk._validation import check_inputs
 
 
 def _valid_inputs():
@@ -113,7 +113,7 @@ def test_nan_in_X_rejected():
 
 def test_fit_raises_on_too_many_causes() -> None:
     """n_causes > 255 raises ValueError at fit (δ.3 uint8 cause dtype cap)."""
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     n = 200
     rng = np.random.default_rng(0)
@@ -128,7 +128,7 @@ def test_fit_raises_on_too_many_causes() -> None:
 
 def test_fit_raises_on_too_many_time_bins() -> None:
     """time_grid > 65_535 raises ValueError at fit (δ.3 uint16 time-index cap)."""
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     n = 200
     rng = np.random.default_rng(0)

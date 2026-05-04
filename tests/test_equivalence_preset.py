@@ -13,7 +13,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 
 def _toy_data(n=120, p=4, seed=0):
@@ -56,7 +56,7 @@ def test_rfsrc_preset_resolves_flags_and_exposes_inbag():
 def test_rfsrc_preset_inbag_matches_legacy_helper():
     """Bootstrap stream is unchanged by the preset — inbag_ must match the
     pre-existing standalone helper used by the alignment validation harness."""
-    from validation.alignment.bootstrap_aligned_spike import _crforest_inbag_counts
+    from validation.alignment.bootstrap_aligned_spike import _comprisk_inbag_counts
 
     X, t, e = _toy_data()
     n, ntree, seed = X.shape[0], 8, 42
@@ -65,7 +65,7 @@ def test_rfsrc_preset_inbag_matches_legacy_helper():
         random_state=seed,
         equivalence="rfsrc",
     ).fit(X, t, e)
-    expected = _crforest_inbag_counts(n, ntree, seed)
+    expected = _comprisk_inbag_counts(n, ntree, seed)
     np.testing.assert_array_equal(f.inbag_, expected)
 
 
@@ -108,7 +108,7 @@ def test_rfsrc_preset_conflicting_split_ntime_raises():
     """Any explicit split_ntime != default and != None must raise — pick a
     value guaranteed never to be the default."""
     X, t, e = _toy_data()
-    from crforest.forest import DEFAULT_SPLIT_NTIME
+    from comprisk.forest import DEFAULT_SPLIT_NTIME
 
     bogus = DEFAULT_SPLIT_NTIME + 7
     with pytest.raises(ValueError, match="split_ntime"):

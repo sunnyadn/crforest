@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from crforest.forest import CompetingRiskForest
+from comprisk.forest import CompetingRiskForest
 
 
 def _make_synthetic_cr(seed=0, n=60):
@@ -230,7 +230,7 @@ def test_default_mode_fit_sets_bin_edges_and_time_grid():
 
 
 def test_default_mode_uses_flat_trees():
-    from crforest._tree_flat import FlatTree
+    from comprisk._tree_flat import FlatTree
 
     X, time, event = _make_synthetic_cr()
     f = CompetingRiskForest(n_estimators=3, mode="default", random_state=0).fit(X, time, event)
@@ -238,7 +238,7 @@ def test_default_mode_uses_flat_trees():
 
 
 def test_reference_mode_still_works():
-    from crforest._tree import RefTreeNode
+    from comprisk._tree import RefTreeNode
 
     X, time, event = _make_synthetic_cr()
     f = CompetingRiskForest(n_estimators=3, mode="reference", random_state=0).fit(X, time, event)
@@ -254,7 +254,7 @@ def test_invalid_mode_raises():
 def test_forest_splitrule_logrank_fit_and_predict_default_mode():
     import numpy as np
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     rng = np.random.default_rng(7)
     n = 200
@@ -279,7 +279,7 @@ def test_forest_splitrule_unknown_raises():
     import numpy as np
     import pytest
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     with pytest.raises(ValueError, match="splitrule"):
         CompetingRiskForest(splitrule="bogus").fit(
@@ -291,7 +291,7 @@ def test_forest_logrank_cause_weights_validates_length():
     import numpy as np
     import pytest
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     forest = CompetingRiskForest(splitrule="logrank", cause_weights=[1.0], mode="reference")
     with pytest.raises(ValueError, match="cause_weights"):
@@ -306,7 +306,7 @@ def test_forest_logrank_cause_weights_rejected_in_default_mode():
     import numpy as np
     import pytest
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     forest = CompetingRiskForest(splitrule="logrank", cause_weights=[0.6, 0.4], mode="default")
     with pytest.raises(NotImplementedError, match="cause_weights"):
@@ -320,7 +320,7 @@ def test_forest_logrank_cause_weights_rejected_in_default_mode():
 def test_forest_logrank_cause_weights_accepted_in_reference_mode():
     import numpy as np
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     rng = np.random.default_rng(8)
     n = 80

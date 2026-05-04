@@ -11,9 +11,9 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from crforest._estimators import aalen_johansen_from_counts, nelson_aalen_from_counts
-from crforest._hist_splits import find_best_split_hist
-from crforest._sparse_leaves import (
+from comprisk._estimators import aalen_johansen_from_counts, nelson_aalen_from_counts
+from comprisk._hist_splits import find_best_split_hist
+from comprisk._sparse_leaves import (
     SparseAtRisk,
     SparseEventCounts,
     to_dense_at_risk,
@@ -21,7 +21,7 @@ from crforest._sparse_leaves import (
     to_sparse_at_risk,
     to_sparse_event_counts,
 )
-from crforest._tree_flat import FlatTree, flatten_tree, predict_leaf_indices, predict_with_flat
+from comprisk._tree_flat import FlatTree, flatten_tree, predict_leaf_indices, predict_with_flat
 
 _TRANSIENT_CACHE_ATTRS = (
     "_event_counts_dense",
@@ -275,13 +275,13 @@ def _find_best_split_rfsrc_aligned(
     drawing the next. Within each evaluation, ``nsplit`` candidate
     thresholds are sampled from the same stream B (handled inside
     ``find_best_split_hist``). This interleaving is the only reason this
-    helper exists — crforest's default ``numpy`` flow batches all mtry
+    helper exists — comprisk's default ``numpy`` flow batches all mtry
     draws upfront, which consumes stream B in a different order and
     therefore picks different features even at an aligned seed.
     """
     import os
 
-    from crforest._aligned_rng import AlignedRng
+    from comprisk._aligned_rng import AlignedRng
 
     if not isinstance(cfg.rng, AlignedRng):
         raise TypeError(

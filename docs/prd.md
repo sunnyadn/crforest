@@ -1,12 +1,12 @@
-# crforest: Product Requirements Document
+# comprisk: Product Requirements Document
 
 Version 1.0 — scope for v0.1 → v1.0
 
 ## 1. Project Summary
 
-crforest is a Python-native competing risks random forest library, scikit-learn compatible, designed to eliminate the Python-to-R workflow split that Python users currently endure for competing risks survival analysis.
+comprisk is a Python-native competing risks random forest library, scikit-learn compatible, designed to eliminate the Python-to-R workflow split that Python users currently endure for competing risks survival analysis.
 
-Python users doing survival analysis today face a forced choice: use scikit-survival (which does not meaningfully support competing risks and OOMs on moderate datasets) or switch to R's randomForestSRC (correct and feature-complete but slow, memory-inefficient, and ecosystem-incompatible). crforest fills this gap with a CPU-based implementation that matches randomForestSRC in statistical capability while offering substantially better performance, memory efficiency, and developer experience within the Python ecosystem.
+Python users doing survival analysis today face a forced choice: use scikit-survival (which does not meaningfully support competing risks and OOMs on moderate datasets) or switch to R's randomForestSRC (correct and feature-complete but slow, memory-inefficient, and ecosystem-incompatible). comprisk fills this gap with a CPU-based implementation that matches randomForestSRC in statistical capability while offering substantially better performance, memory efficiency, and developer experience within the Python ecosystem.
 
 **Project status:** Pre-alpha. A NumPy reference implementation exists and aligns with randomForestSRC on 3/5 validation datasets within 0.01 C-index.
 
@@ -48,7 +48,7 @@ Estimated audience: hundreds to low thousands globally. Niche but underserved.
 | pycox | Python | Deep learning only | N/A | N/A | Neural net focus |
 | pysurvival | Python | Limited, abandoned | Unknown | Unknown | Poor |
 
-No existing Python library combines correct CR implementation, good performance, and modern Python ergonomics. crforest targets exactly this combination.
+No existing Python library combines correct CR implementation, good performance, and modern Python ergonomics. comprisk targets exactly this combination.
 
 ## 3. Goals and Non-Goals
 
@@ -118,7 +118,7 @@ Three personas representing the intended audience:
 - Pain: Currently round-trips data to R for CR; wants to stop.
 - Success: Delete the R scripts and do the full analysis in a single Jupyter notebook.
 
-**Blair, epidemiology postdoc.** Works on cancer registry data. Needs CR because cancer-specific vs other-cause mortality must be separated. Collaborates with a biostatistician who uses R, but Blair's own code is Python. Uses crforest for prototyping, hands off to R for final modeling if required by journal.
+**Blair, epidemiology postdoc.** Works on cancer registry data. Needs CR because cancer-specific vs other-cause mortality must be separated. Collaborates with a biostatistician who uses R, but Blair's own code is Python. Uses comprisk for prototyping, hands off to R for final modeling if required by journal.
 
 **Chen, health-economics data scientist at a pharmaceutical company.** Builds risk prediction models for clinical trial design. Needs Python for integration with internal tooling. Values reliability and clear error messages over cutting-edge features.
 
@@ -148,7 +148,7 @@ Three personas representing the intended audience:
 
 **Deferred to v1.1:**
 
-- **Modified Gray's test** (`splitrule="logrankgray"`): Based on Gray's test for subdistribution hazards with IPCW weights, for CIF-focused splitting. Deferred because rfSRC does not expose an equivalent splitrule (so no paired-seed baseline is available), and applied-user value is marginal given logrankCR is the community default. Landing this post-v1.0 also moves crforest ahead of rfSRC on this axis. See §11.
+- **Modified Gray's test** (`splitrule="logrankgray"`): Based on Gray's test for subdistribution hazards with IPCW weights, for CIF-focused splitting. Deferred because rfSRC does not expose an equivalent splitrule (so no paired-seed baseline is available), and applied-user value is marginal given logrankCR is the community default. Landing this post-v1.0 also moves comprisk ahead of rfSRC on this axis. See §11.
 
 **Leaf estimation:**
 
@@ -252,7 +252,7 @@ Computed lazily via `compute_importance(X_eval, y_eval)`, whose result is cached
 Expose standard metrics as functions:
 
 ```python
-from crforest.metrics import (
+from comprisk.metrics import (
     concordance_index,         # cause-specific C-index
     brier_score,               # time-dependent Brier score
     integrated_brier_score,    # IBS over time interval
@@ -262,7 +262,7 @@ from crforest.metrics import (
 ### 5.5 Visualization Helpers
 
 ```python
-from crforest.plotting import (
+from comprisk.plotting import (
     plot_cif,           # CIF curves for one or more samples
     plot_calibration,   # calibration plot at given time horizon
     plot_vimp,          # horizontal bar chart of VIMP, per cause
@@ -321,8 +321,8 @@ Error messages must name the offending column and row index where applicable.
 
 | vs | Speed | Memory |
 |----|-------|--------|
-| scikit-survival (`low_memory=True`, single-event collapse) | 5×+ faster, gap widens with n (5.7× at n=5k → 64× at n=25k → projected 100×+ at n=100k); sksurv `low_memory=False` cannot fit at n ≥ 10k | sksurv `low_memory=False` OOMs; sksurv `low_memory=True` is more compact but lacks CHF / survival predictions (architectural tradeoff that crforest avoids) |
-| randomForestSRC | 5–7× faster on real CHF n=75k (4.96× default; 6.13× best ntime config) | 2–5× less RSS (rfSRC peak n=75k = 14.7 GB; crforest n=100k peak = 7.4 GB) |
+| scikit-survival (`low_memory=True`, single-event collapse) | 5×+ faster, gap widens with n (5.7× at n=5k → 64× at n=25k → projected 100×+ at n=100k); sksurv `low_memory=False` cannot fit at n ≥ 10k | sksurv `low_memory=False` OOMs; sksurv `low_memory=True` is more compact but lacks CHF / survival predictions (architectural tradeoff that comprisk avoids) |
+| randomForestSRC | 5–7× faster on real CHF n=75k (4.96× default; 6.13× best ntime config) | 2–5× less RSS (rfSRC peak n=75k = 14.7 GB; comprisk n=100k peak = 7.4 GB) |
 
 ### 6.2 Correctness Validation
 
@@ -352,7 +352,7 @@ Error messages must name the offending column and row index where applicable.
 ### 6.4 Installation
 
 ```bash
-pip install crforest
+pip install comprisk
 ```
 
 No compilation required by end user (ship wheels for major platforms). No CUDA, no C++ compiler needed.
@@ -362,7 +362,7 @@ No compilation required by end user (ship wheels for major platforms). No CUDA, 
 - `pyproject.toml` with PEP 621 metadata
 - Build backend: hatchling or setuptools
 - CI builds wheels for Linux (x86_64), macOS (x86_64 + arm64), Windows (x86_64) via cibuildwheel
-- Published to PyPI under `crforest`
+- Published to PyPI under `comprisk`
 - Optional: conda-forge recipe after v0.2
 
 ## 7. Documentation
@@ -477,7 +477,7 @@ Candidates for v1.x and v2.x, explicitly out of scope for v1.0:
 - **Time-varying covariates:** Analogous to randomForestSRC's tdc support.
 - **Dynamic prediction / landmarking:** For use with longitudinal data.
 - **Survival-specific feature engineering:** Built-in utilities for common transforms.
-- **R bindings:** Reverse direction — let R users call crforest from R. Low priority.
+- **R bindings:** Reverse direction — let R users call comprisk from R. Low priority.
 
 ## 12. Open Questions
 
@@ -494,7 +494,7 @@ These remain unresolved and may be revisited during development:
 - Benchmark performance targets (section 6.1) met.
 - Statistical validation against randomForestSRC passes (section 6.2).
 - Documentation deployed on ReadTheDocs, tutorials runnable end-to-end.
-- At least one real competing-risks workflow that previously required R can be completed end-to-end in Python using crforest.
+- At least one real competing-risks workflow that previously required R can be completed end-to-end in Python using comprisk.
 
 ## 14. Governance
 

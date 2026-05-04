@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from crforest._time_grid import coarsen_time_grid
+from comprisk._time_grid import coarsen_time_grid
 
 
 def test_identity_when_ntime_ge_grid_length() -> None:

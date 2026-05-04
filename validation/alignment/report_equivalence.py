@@ -30,10 +30,10 @@ def write_report(
     """Write the equivalence-gate audit as a markdown file at ``path``."""
     path = Path(path)
     lines: list[str] = []
-    lines.append("# crforest vs randomForestSRC — equivalence-gate audit")
+    lines.append("# comprisk vs randomForestSRC — equivalence-gate audit")
     lines.append("")
     lines.append(f"Timestamp: {header['timestamp']}")
-    lines.append(f"crforest commit: {header['commit_sha']}")
+    lines.append(f"comprisk commit: {header['commit_sha']}")
     lines.append(f"randomForestSRC: {header['rfsrc_version']}")
     lines.append(f"Python: {header['python_version']}  |  R: {header['r_version']}")
     lines.append(f"Machine: {header['machine']}")
@@ -119,7 +119,7 @@ def write_report(
                 lines.append(header_q)
                 lines.append(sep_q)
                 lines.append(_fmt_quantile_row("cross-lib (median over seeds)", q[key_cross], qs))
-                lines.append(_fmt_quantile_row("within crforest (paired max)", q[key_wcr], qs))
+                lines.append(_fmt_quantile_row("within comprisk (paired max)", q[key_wcr], qs))
                 lines.append(_fmt_quantile_row("within rfSRC (paired max)", q[key_wrf], qs))
                 lines.append("")
 
@@ -225,9 +225,9 @@ def write_report(
             lines.append(
                 '> Note: "binning residual candidate" = hard-cap failure on a dataset '
                 "where the cross-lib p95 is still below the within-lib paired-seed noise floor. "
-                "Partly driven by crforest's histogram-binned splits vs rfSRC's exhaustive-over-"
+                "Partly driven by comprisk's histogram-binned splits vs rfSRC's exhaustive-over-"
                 "observed-thresholds splits: the hd nsplit convergence sweep (report "
-                "`nsplit_convergence_2026-04-24T05-05-56.md`) shows raising crforest nsplit "
+                "`nsplit_convergence_2026-04-24T05-05-56.md`) shows raising comprisk nsplit "
                 "from 10 to 100 shrinks the gap by ~10% but exhaustive (nsplit=0) does not "
                 "minimize — so binning contributes but is not the sole mechanism. See also "
                 "the IBS section (above) which passes noise-floor on all four datasets."

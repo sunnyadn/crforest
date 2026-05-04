@@ -1,9 +1,9 @@
-"""κ.exp4b — aggregate crforest + rfSRC multi-seed dumps, answer:
+"""κ.exp4b — aggregate comprisk + rfSRC multi-seed dumps, answer:
 is the 0.016 death C-index gap within either method's seed-to-seed noise?
 
 Loads:
-  /tmp/chf_2012_crforest_risks_multiseed.parquet  (from exp4a, Mac)
-  /tmp/chf_2012_crforest_walls_multiseed.parquet
+  /tmp/chf_2012_comprisk_risks_multiseed.parquet  (from exp4a, Mac)
+  /tmp/chf_2012_comprisk_walls_multiseed.parquet
   /tmp/chf_2012_rfsrc_risks_multiseed.parquet     (from exp4_multiseed_rfsrc.R, win)
   /tmp/chf_2012_rfsrc_walls_multiseed.parquet
 
@@ -20,13 +20,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import concordance_index_cr
-from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+from comprisk import concordance_index_cr
+from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 TEST_IDX = Path("/tmp/chf_2012_test_idx.txt")
-CR_RISKS = Path("/tmp/chf_2012_crforest_risks_multiseed.parquet")
-CR_WALLS = Path("/tmp/chf_2012_crforest_walls_multiseed.parquet")
+CR_RISKS = Path("/tmp/chf_2012_comprisk_risks_multiseed.parquet")
+CR_WALLS = Path("/tmp/chf_2012_comprisk_walls_multiseed.parquet")
 RF_RISKS = Path("/tmp/chf_2012_rfsrc_risks_multiseed.parquet")
 RF_WALLS = Path("/tmp/chf_2012_rfsrc_walls_multiseed.parquet")
 SEEDS = [42, 43, 44, 45, 46]
@@ -67,7 +67,7 @@ def main() -> None:
             rows.append(sc)
         return pd.DataFrame(rows)
 
-    cr_df = load_method("crforest", CR_RISKS, CR_WALLS)
+    cr_df = load_method("comprisk", CR_RISKS, CR_WALLS)
     rf_df = load_method("rfsrc", RF_RISKS, RF_WALLS)
     all_df = pd.concat([cr_df, rf_df], ignore_index=True)
 
@@ -85,7 +85,7 @@ def main() -> None:
     print("\n" + "=" * 80)
     print(" within-method statistics (n=5 seeds)")
     print("=" * 80)
-    for method in ("crforest", "rfsrc"):
+    for method in ("comprisk", "rfsrc"):
         sub = all_df[all_df["method"] == method]
         print(f"\n  {method}:")
         for col in ("c1_h", "c2_h", "c1_u", "c2_u"):
@@ -131,9 +131,9 @@ def main() -> None:
     print("=" * 80)
     cr_wall = cr_df["fit_wall"].mean()
     rf_wall = rf_df["fit_wall"].mean()
-    print(f"  crforest mean fit:  {cr_wall:.2f}s  (Mac CPU, 100 trees)")
+    print(f"  comprisk mean fit:  {cr_wall:.2f}s  (Mac CPU, 100 trees)")
     print(f"  rfsrc    mean fit:  {rf_wall:.2f}s  (win 28-thread, 100 trees)")
-    print(f"  speedup (rf/cr):    {rf_wall / cr_wall:.2f}× crforest faster on its own machine")
+    print(f"  speedup (rf/cr):    {rf_wall / cr_wall:.2f}× comprisk faster on its own machine")
     print("  NOTE: speedup is cross-machine (Mac M-series vs win i7+OpenBLAS) — for")
     print("        canonical benchmarks both should run on the same machine.")
 

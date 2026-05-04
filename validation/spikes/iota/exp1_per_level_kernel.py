@@ -18,7 +18,7 @@ import numpy as np
 def main():
     import cupy as cp
 
-    from crforest._gpu_kernels import histogram_kernel_per_level
+    from comprisk._gpu_kernels import histogram_kernel_per_level
 
     rng = np.random.default_rng(0)
     n = 5000

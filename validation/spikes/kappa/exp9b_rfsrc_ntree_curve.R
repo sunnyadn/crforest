@@ -1,8 +1,8 @@
 # κ.exp9b — rfSRC ntree plateau check on real CHF.
 #
-# Companion to exp9 (crforest 3 seeds × ntree {100,200,500,1000} on real CHF).
+# Companion to exp9 (comprisk 3 seeds × ntree {100,200,500,1000} on real CHF).
 # Quick single-seed rfSRC runs at ntree {500, 1000} so we can compare the
-# converged C-index against crforest's plateau (HF Harrell ~0.8647).
+# converged C-index against comprisk's plateau (HF Harrell ~0.8647).
 #
 # Single seed=42 to keep wall under 30 min:
 #   ntree=500  ≈ 9 min  (linear extrap from canonical 100/111s)
@@ -11,7 +11,7 @@
 # Dumps risk vectors so Python re-scores with the same Harrell+Uno C-index
 # functions used for exp9.
 #
-# Run: ssh win 'cd ~/crforest && \
+# Run: ssh win 'cd ~/comprisk && \
 #        Rscript validation/spikes/kappa/exp9b_rfsrc_ntree_curve.R \
 #        2>&1 | tee /tmp/exp9b_rfsrc_ntree_curve.log'
 

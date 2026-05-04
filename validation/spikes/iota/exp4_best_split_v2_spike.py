@@ -666,7 +666,7 @@ def best_split_kernel_per_node_v2(
 def correctness_check():
     import cupy as cp
 
-    from crforest._gpu_kernels import (
+    from comprisk._gpu_kernels import (
         best_split_kernel_per_node,
         histogram_kernel_per_level,
     )
@@ -809,15 +809,15 @@ def _make_profiled_builder(use_v2: bool):
     """
     import cupy as cp
 
-    from crforest._estimators import aalen_johansen_from_counts
-    from crforest._gpu_kernels import (
+    from comprisk._estimators import aalen_johansen_from_counts
+    from comprisk._gpu_kernels import (
         _accumulate_leaf_cpu,
         _build_cand_mask,
         _partition_inplace,
         best_split_kernel_per_node,
         histogram_kernel_per_level,
     )
-    from crforest._tree_flat import FlatTree
+    from comprisk._tree_flat import FlatTree
 
     profile = defaultdict(float)
     counts = defaultdict(int)
@@ -1079,8 +1079,8 @@ def _make_profiled_builder(use_v2: bool):
 def perf_measure():
     import cupy as cp
 
-    from crforest import CompetingRiskForest
-    from crforest import _gpu_kernels as _gk
+    from comprisk import CompetingRiskForest
+    from comprisk import _gpu_kernels as _gk
 
     rng = np.random.default_rng(0)
     n, p = 100_000, 8

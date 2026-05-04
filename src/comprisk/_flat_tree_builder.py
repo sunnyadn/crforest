@@ -16,8 +16,8 @@ from __future__ import annotations
 import numpy as np
 from numba import njit
 
-from crforest._hist_splits import find_best_split_hist_batched
-from crforest._tree_flat import FlatTree
+from comprisk._hist_splits import find_best_split_hist_batched
+from comprisk._tree_flat import FlatTree
 
 
 @njit(cache=True, nogil=True)
@@ -330,7 +330,7 @@ def build_flat_tree(
     kernel; ``t_idx_full`` (fine, n_time_bins_full) is used to accumulate
     leaf event_counts so that leaf CIFs align with ``forest.time_grid_``.
     """
-    from crforest._estimators import aalen_johansen_from_counts_batched
+    from comprisk._estimators import aalen_johansen_from_counts_batched
 
     n_bag = bootstrap_indices.shape[0]
     N_max_nodes = max(64, 4 * n_bag // max(1, min_samples_leaf))

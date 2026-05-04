@@ -30,7 +30,7 @@ def test_gpu_synthetic_planted_signal_auc():
     predict_risk(cause=1) vs the binary cause-1 event indicator."""
     from sklearn.metrics import roc_auc_score
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     rng = np.random.default_rng(0)
     n = 5000

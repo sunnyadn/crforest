@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from crforest import CompetingRiskForest
-from crforest.metrics import concordance_index_cr
+from comprisk import CompetingRiskForest
+from comprisk.metrics import concordance_index_cr
 
 
 def _toy(n=200, p=4, seed=0, n_causes=2):
@@ -59,7 +59,7 @@ def test_predict_oob_risk_cause_validation():
 
 def test_predict_oob_risk_matches_manual_aggregation():
     """OOB risk should equal pred[cause-1] / count from the existing primitive."""
-    from crforest._importance import _ensemble_oob_predictions
+    from comprisk._importance import _ensemble_oob_predictions
 
     forest, X, _time, _event = _fit(n=120, p=3, n_estimators=15, seed=1)
     causes = list(range(1, forest.n_causes_ + 1))

@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from crforest._binning import apply_bins, fit_bin_edges
-from crforest._hist_splits import (
+from comprisk._binning import apply_bins, fit_bin_edges
+from comprisk._hist_splits import (
     _best_split_in_feature,
     _best_split_in_feature_lr,
     _node_histograms,
@@ -224,7 +224,7 @@ def test_find_best_split_hist_respects_selected_features():
 
 def test_best_split_in_feature_lr_single_cause_matches_reference():
     """Histogram logrank kernel agrees with reference cause_specific_log_rank_statistic."""
-    from crforest._splits import bin_times, cause_specific_log_rank_statistic
+    from comprisk._splits import bin_times, cause_specific_log_rank_statistic
 
     rng = np.random.default_rng(0)
     n = 50
@@ -263,7 +263,7 @@ def test_best_split_in_feature_lr_single_cause_matches_reference():
 
 
 def test_find_best_split_hist_logrank_dispatches_to_lr_kernel():
-    from crforest._time_grid import fit_time_grid
+    from comprisk._time_grid import fit_time_grid
 
     rng = np.random.default_rng(1)
     n, p = 60, 3
@@ -534,7 +534,7 @@ def test_find_best_split_hist_nsplit_can_reach_top_boundary():
 
 def test_find_best_split_hist_nsplit_single_boundary_case():
     """When b_hi == b_lo + 1, the single valid boundary b_lo must be found."""
-    from crforest._binning import apply_bins, fit_bin_edges
+    from comprisk._binning import apply_bins, fit_bin_edges
 
     # Construct data where all samples fall in just 2 bins
     rng_data = np.random.default_rng(99)

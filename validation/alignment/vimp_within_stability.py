@@ -1,4 +1,4 @@
-"""Within-lib stability of crforest OOB VIMP across fit random_state.
+"""Within-lib stability of comprisk OOB VIMP across fit random_state.
 
 For each real dataset, fits the SAME training data with N different
 random_state values and computes pairwise Spearman correlation between
@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
 

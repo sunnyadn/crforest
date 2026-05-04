@@ -4,12 +4,12 @@ import numpy as np
 import pytest
 from validation.alignment import _rpy2_available
 from validation.alignment.compare_splits import (
-    crforest_candidate_stats,
+    comprisk_candidate_stats,
     rfsrc_per_feature_best_split,
     toy_input,
 )
 
-from crforest._splits import find_best_split
+from comprisk._splits import find_best_split
 
 
 def test_toy_input_shapes():
@@ -48,9 +48,9 @@ def test_toy_input_has_both_causes_and_censoring():
     assert (data["event"] == 2).any()
 
 
-def test_crforest_candidate_stats_schema():
+def test_comprisk_candidate_stats_schema():
     data = toy_input(seed=0, n=30, n_features=3, n_causes=2)
-    df = crforest_candidate_stats(data["X"], data["time"], data["event"], data["n_causes"])
+    df = comprisk_candidate_stats(data["X"], data["time"], data["event"], data["n_causes"])
     assert set(df.columns) == {"feature", "threshold", "stat"}
     assert len(df) > 0
     assert df["feature"].dtype.kind in "iu"
@@ -58,15 +58,15 @@ def test_crforest_candidate_stats_schema():
     assert df["stat"].dtype.kind == "f"
 
 
-def test_crforest_candidate_stats_covers_all_features():
+def test_comprisk_candidate_stats_covers_all_features():
     data = toy_input(seed=0, n=30, n_features=3, n_causes=2)
-    df = crforest_candidate_stats(data["X"], data["time"], data["event"], data["n_causes"])
+    df = comprisk_candidate_stats(data["X"], data["time"], data["event"], data["n_causes"])
     assert set(df["feature"].unique()) == {0, 1, 2}
 
 
-def test_crforest_candidate_stats_best_matches_find_best_split():
+def test_comprisk_candidate_stats_best_matches_find_best_split():
     data = toy_input(seed=0, n=30, n_features=3, n_causes=2)
-    df = crforest_candidate_stats(data["X"], data["time"], data["event"], data["n_causes"])
+    df = comprisk_candidate_stats(data["X"], data["time"], data["event"], data["n_causes"])
     best_row = df.sort_values("stat", ascending=False).iloc[0]
     _feat, _thresh, stat = find_best_split(
         data["X"], data["time"], data["event"], data["n_causes"], min_samples_leaf=1

@@ -1,7 +1,7 @@
 """Within-lib vs cross-lib p95 |ΔCIF| under the equivalence='rfsrc' preset.
 
-For each of 4 datasets, fit crforest (preset) and rfSRC (bootstrap=by.user
-matched to crforest's inbag_) on 4 seeds, then compute on the reference
+For each of 4 datasets, fit comprisk (preset) and rfSRC (bootstrap=by.user
+matched to comprisk's inbag_) on 4 seeds, then compute on the reference
 event-time grid:
 
   cross_p95_cif         = median over seeds of  p95(|cif_cr[s] - cif_rf[s]|)
@@ -26,7 +26,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
 from validation.alignment.equivalence_gate import (
     build_reference_grid,

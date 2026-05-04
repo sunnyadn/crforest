@@ -1,11 +1,11 @@
-"""κ.exp4a — crforest multi-seed, dump risk per seed.
+"""κ.exp4a — comprisk multi-seed, dump risk per seed.
 
 Loops 5 seeds, fits CompetingRiskForest, dumps test-set risk vectors per seed
-to /tmp/chf_2012_crforest_risks_multiseed.parquet (mirrors what exp4_multiseed_rfsrc.R
+to /tmp/chf_2012_comprisk_risks_multiseed.parquet (mirrors what exp4_multiseed_rfsrc.R
 dumps for rfSRC). exp4b aggregates both later. Run while rfSRC bench is in
 flight on win — the two are independent.
 
-Run: uv run python -u validation/spikes/kappa/exp4a_crforest_dump.py
+Run: uv run python -u validation/spikes/kappa/exp4a_comprisk_dump.py
 """
 
 from __future__ import annotations
@@ -16,13 +16,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 TRAIN_IDX = Path("/tmp/chf_2012_train_idx.txt")
 TEST_IDX = Path("/tmp/chf_2012_test_idx.txt")
-OUT_RISKS = Path("/tmp/chf_2012_crforest_risks_multiseed.parquet")
-OUT_WALLS = Path("/tmp/chf_2012_crforest_walls_multiseed.parquet")
+OUT_RISKS = Path("/tmp/chf_2012_comprisk_risks_multiseed.parquet")
+OUT_WALLS = Path("/tmp/chf_2012_comprisk_walls_multiseed.parquet")
 SEEDS = [42, 43, 44, 45, 46]
 
 
@@ -44,7 +44,7 @@ def main() -> None:
     rows_risk = []
     rows_wall = []
     for seed in SEEDS:
-        print(f"\n[crforest] seed={seed} fitting...", flush=True)
+        print(f"\n[comprisk] seed={seed} fitting...", flush=True)
         f = CompetingRiskForest(n_estimators=100, n_jobs=-1, random_state=seed)
         t0 = _time.perf_counter()
         f.fit(X_tr, t_tr, e_tr)
@@ -69,7 +69,7 @@ def main() -> None:
     print(f"[dump] {OUT_WALLS}", flush=True)
     walls = pd.DataFrame(rows_wall)
     print(
-        f"[summary] crforest fit_wall: mean={walls['fit_wall'].mean():.2f}s  "
+        f"[summary] comprisk fit_wall: mean={walls['fit_wall'].mean():.2f}s  "
         f"std={walls['fit_wall'].std(ddof=1):.2f}s  "
         f"range=[{walls['fit_wall'].min():.2f}, {walls['fit_wall'].max():.2f}]",
         flush=True,

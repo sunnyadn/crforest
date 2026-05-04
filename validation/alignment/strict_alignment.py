@@ -1,7 +1,7 @@
 """Equivalence-gate rerun at strict-alignment time-grid settings.
 
 The tiebreak diagnostic (tiebreak_diagnostic.py) found cell F on hd
-bit-identical between crforest and rfSRC -- but only at a fully-
+bit-identical between comprisk and rfSRC -- but only at a fully-
 deterministic single-tree config (bootstrap=F, mtry=p, nsplit=0,
 ntree=1, split_ntime=None). The conjecture this driver tested was
 that the same `split_ntime=None` fix would also close the gate at
@@ -11,7 +11,7 @@ This driver re-runs the equivalence-gate metrics (cross_p95_cif /
 risk / IBS, within-lib noise floor, hard-cap) at the production
 ensemble config but with both time-grid knobs removed:
 
-    crforest: split_ntime=None  (logrank on full time grid)
+    comprisk: split_ntime=None  (logrank on full time grid)
     rfSRC:    ntime=0           (CIF output on all event times)
 
 Everything else remains production default (bootstrap=T, mtry=sqrt(p),
@@ -43,7 +43,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment.equivalence_gate import (
     HARD_CAP_DEFAULT,
     QUANTILE_GRID,
@@ -62,7 +62,7 @@ from validation.splits import _SPLITS_DIR
 DATASETS: tuple[str, ...] = ("pbc", "follic", "hd", "synthetic")
 
 
-def _fit_crforest_strict(
+def _fit_comprisk_strict(
     X_tr: np.ndarray,
     t_tr: np.ndarray,
     e_tr: np.ndarray,
@@ -163,7 +163,7 @@ def _run_cell(dataset: str, seed: int) -> dict:
         f"[strict ds={dataset} seed={seed}] cr_fit_start n_train={len(train_idx)} p={X.shape[1]}",
         flush=True,
     )
-    cr = _fit_crforest_strict(
+    cr = _fit_comprisk_strict(
         X[train_idx], time[train_idx], event[train_idx], X[test_idx], seed=seed
     )
     print(
@@ -221,7 +221,7 @@ def _write_report(
         "",
         "Config: production defaults (bootstrap=T, mtry=sqrt(p), nsplit=10, "
         "ntree=500, min_samples_leaf=1) with two alignment overrides:",
-        "  - crforest `split_ntime=None` (full time grid for logrank eval)",
+        "  - comprisk `split_ntime=None` (full time grid for logrank eval)",
         "  - rfSRC    `ntime=0`          (full event times on CIF output grid)",
         "",
         f"Hard cap (default): {header['hard_cap']}",
@@ -266,7 +266,7 @@ def _write_report(
             "All four gate datasets pass noise-floor and hard-cap under strict "
             "alignment. The prior hd/follic hard-cap failures are confirmed as "
             "artifacts of the post-epsilon `split_ntime=50` coarsening, not "
-            "algorithmic divergence between crforest and rfSRC."
+            "algorithmic divergence between comprisk and rfSRC."
         )
     else:
         failing = [ds for ds in per_dataset if not per_dataset[ds]["tol"]["overall_pass"]]

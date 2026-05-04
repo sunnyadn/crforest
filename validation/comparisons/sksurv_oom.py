@@ -1,10 +1,10 @@
-"""scikit-survival vs crforest paired wall + memory benchmark.
+"""scikit-survival vs comprisk paired wall + memory benchmark.
 
 Cited by the README "vs scikit-survival" table. Each (lib, n, seed) cell
 runs in its own subprocess so an OOM in one cell does not poison the
 harness; RSS-cap via resource.RLIMIT_AS keeps the host responsive on hit.
 The two libraries solve different tasks (sksurv RSF: single-event;
-crforest: competing-risks); for memory-and-wall comparison, both fit on
+comprisk: competing-risks); for memory-and-wall comparison, both fit on
 the same X + t with a single-event collapse for sksurv (event in {1,2}
 -> 1).
 
@@ -157,8 +157,8 @@ def child_main(
             # Wolbers cause-1 left NaN — sksurv RSF on collapsed events has no
             # cause-specific risk to evaluate.
 
-        elif lib == "crforest":
-            from crforest import CompetingRiskForest, concordance_index_cr
+        elif lib == "comprisk":
+            from comprisk import CompetingRiskForest, concordance_index_cr
 
             fitted = CompetingRiskForest(
                 n_estimators=ntree,
@@ -311,7 +311,7 @@ def fit_powerlaw(ns, ys):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--child", action="store_true", help="internal: run a single cell child")
-    parser.add_argument("--lib", choices=["sksurv", "crforest"])
+    parser.add_argument("--lib", choices=["sksurv", "comprisk"])
     parser.add_argument("--n", type=int)
     parser.add_argument("--p", type=int, default=58)
     parser.add_argument("--seed", type=int, default=42)
@@ -321,13 +321,13 @@ def main() -> None:
         "--n-jobs",
         type=int,
         default=1,
-        help="passed to both libs; sksurv default is 1, crforest default is -1",
+        help="passed to both libs; sksurv default is 1, comprisk default is -1",
     )
     parser.add_argument(
         "--max-depth-sksurv",
         type=int,
         default=None,
-        help="cap sksurv tree depth (set to 15 for crforest-matched config)",
+        help="cap sksurv tree depth (set to 15 for comprisk-matched config)",
     )
     parser.add_argument(
         "--low-memory-sksurv",
@@ -340,7 +340,7 @@ def main() -> None:
         "--ns", default="10000,25000,50000,100000", help="comma-sep n values to sweep"
     )
     parser.add_argument("--seeds", default="42")
-    parser.add_argument("--libs", default="sksurv,crforest")
+    parser.add_argument("--libs", default="sksurv,comprisk")
     parser.add_argument("--timeout", type=int, default=3600)
     parser.add_argument("--out", default="/tmp/sksurv_oom.parquet")
     args = parser.parse_args()

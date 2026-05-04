@@ -62,7 +62,7 @@ def test_eval_on_ref_grid_two_samples():
 
 
 def _fixture_cells_perfect_match(n_seeds: int = 4) -> list[dict]:
-    """4 seeds, crforest == rfSRC exactly, small seed-to-seed variation within each lib.
+    """4 seeds, comprisk == rfSRC exactly, small seed-to-seed variation within each lib.
 
     Returns a list of per-cell dicts with keys: seed, cif_cr, cif_rf, risk_cr, risk_rf.
     """

@@ -1,22 +1,30 @@
-# crforest
+# comprisk
 
-[![PyPI version](https://img.shields.io/pypi/v/crforest.svg)](https://pypi.org/project/crforest/)
-[![CI](https://github.com/sunnyadn/crforest/actions/workflows/ci.yml/badge.svg)](https://github.com/sunnyadn/crforest/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/comprisk.svg)](https://pypi.org/project/comprisk/)
+[![CI](https://github.com/sunnyadn/comprisk/actions/workflows/ci.yml/badge.svg)](https://github.com/sunnyadn/comprisk/actions/workflows/ci.yml)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19876282-blue)](https://doi.org/10.5281/zenodo.19876282)
 
-Competing-risks random survival forests for Python. 10-22× faster than
-randomForestSRC on real EHR-shaped data (cardio + oncology cohorts),
-scales to n = 10⁶ on a consumer desktop in ~1 min, scikit-learn-compatible.
-Designed to replace the Python → R workflow split that applied
-researchers currently endure for competing-risks survival analysis.
+**comprisk** — a Python toolkit for competing risks. v0.3 ships a
+scalable, scikit-learn-compatible competing-risks random survival forest;
+v0.4 adds Fine-Gray subdistribution-hazard regression, a stand-alone
+Aalen-Johansen cumulative-incidence estimator, Gray's K-sample test, and
+cause-specific Cox PH (see [Roadmap](#roadmap)). Designed to remove the
+Python → R workflow split that applied researchers currently endure for
+competing-risks survival analysis.
 
 > **Status: alpha.** API and internals may change before v1.0.
+> **Renamed from `crforest` in 0.3.1** — `pip install comprisk`,
+> `from comprisk import CompetingRiskForest` (see
+> [Migrating from crforest](#migrating-from-crforest)).
 
 ## Highlights
 
-- **The only competing-risks Random Survival Forest in Python.** Three-state
-  fit and predict, Aalen-Johansen CIF, Nelson-Aalen CHF, cause-specific
-  Harrell + Uno IPCW C-indices, OOB Breiman permutation VIMP — out of the box.
+- **Forest today, regression next.** v0.3 ships the only native Python
+  competing-risks RSF (cause-specific log-rank splitting + composite CR
+  log-rank, Aalen-Johansen CIF, Nelson-Aalen CHF, Wolbers + Uno IPCW
+  concordance, OOB Breiman VIMP, Ishwaran minimal-depth variable
+  selection). v0.4 adds Fine-Gray regression and the rest of the canonical
+  CR toolbox (see [Roadmap](#roadmap)).
 - **10–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
   on real EHR data (CHF 14–22×, SEER 11.6×; full tables in
   [docs/benchmarks.md](docs/benchmarks.md)), with C ≈ 0.85 on both
@@ -27,9 +35,9 @@ researchers currently endure for competing-risks survival analysis.
   reproduces the per-tree mtry/nsplit RNG stream for paper-grade
   reproducibility, sensitivity checks, and rfSRC-baseline migrations.
 
-## crforest vs alternatives
+## comprisk vs alternatives
 
-|                                          | crforest                       | randomForestSRC                    | scikit-survival          |
+|                                          | comprisk                       | randomForestSRC                    | scikit-survival          |
 |------------------------------------------|:------------------------------:|:----------------------------------:|:------------------------:|
 | Language                                 | Python                         | R                                  | Python                   |
 | Native competing risks                   | ✓                              | ✓                                  | ✗ (single-event only)    |
@@ -51,8 +59,8 @@ full CHF arrays; peak RSS reaches 16.8 GB at n = 5k on synthetic, OOMs
 ## Install
 
 ```bash
-pip install crforest          # or:  uv add crforest
-pip install "crforest[gpu]"   # or:  uv add 'crforest[gpu]'
+pip install comprisk          # or:  uv add comprisk
+pip install "comprisk[gpu]"   # or:  uv add 'comprisk[gpu]'
 ```
 
 Requires Python ≥ 3.10. Core dependencies: numpy, scipy, pandas, joblib,
@@ -63,7 +71,7 @@ faster only at low feature count today, full rewrite scheduled for v1.1).
 
 ```python
 import numpy as np
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 # Toy competing-risks data: 500 subjects, 6 features, 2 causes (+ censoring).
 rng = np.random.default_rng(42)
@@ -123,6 +131,25 @@ format, prediction shapes, cross-validation, GPU, and migrating from rfSRC.
 > 3-arg `fit(X, time, event)` form. Full example in
 > [docs/quickstart.md § Cross-validation](docs/quickstart.md#cross-validation).
 
+## Roadmap
+
+comprisk is positioned as a complete, Python-native CR toolkit. The 12-month
+scope is locked to competing-risks methods only — generalist survival
+methods (general Cox PH, AFT, parametric, deep-survival, Kaplan-Meier as
+a standalone API) are out of scope; use
+[lifelines](https://lifelines.readthedocs.io/) or
+[scikit-survival](https://scikit-survival.readthedocs.io/) for those.
+
+| Version  | Module                                                | Status               |
+|----------|-------------------------------------------------------|----------------------|
+| **v0.3** | `CompetingRiskForest` (CR-RSF)                        | Shipped              |
+| v0.4     | `FineGrayRegression` (subdistribution hazard)         | Planned (Q3-Q4 2026) |
+| v0.4     | `CumulativeIncidence` (stand-alone Aalen-Johansen)    | Planned (Q3-Q4 2026) |
+| v0.4     | `gray_test` (Gray's K-sample log-rank)                | Planned (Q3-Q4 2026) |
+| v0.4     | `CauseSpecificCox` (CR-aware censoring)               | Planned (Q3-Q4 2026) |
+| v1.0     | API freeze + JMLR MLOSS submission                    | Planned              |
+| v1.1     | Full GPU rewrite                                      | Planned              |
+
 ## Benchmarks
 
 Headline numbers — full tables, methodology, and reproducibility scripts
@@ -130,7 +157,7 @@ in [docs/benchmarks.md](docs/benchmarks.md).
 
 **vs randomForestSRC, matched-pair on real EHR data:**
 
-| Cohort | n × p | Hardware | crforest | rfSRC OMP-on | Speedup |
+| Cohort | n × p | Hardware | comprisk | rfSRC OMP-on | Speedup |
 |---|---|---|---|---|---|
 | CHF (cardio) | 75k × 58 | Apple M4 / i7-14700K / HPC | 5.6–9.4 s | 84.8–207.3 s | **14–22×** |
 | SEER breast (oncology) | 238k × 17 | HPC Xeon Gold 6148 | 7.0 s | 81.6 s | **11.6×** |
@@ -144,13 +171,13 @@ narrows on lower-p cohorts. ~95× speedup vs rfSRC built without OpenMP
 **vs scikit-survival, paired on i7-14700K** — synthetic 2-cause Weibull,
 p = 58, both libraries at their best config:
 
-| n | sksurv `low_memory=True` | crforest | speedup |
+| n | sksurv `low_memory=True` | comprisk | speedup |
 |---|---|---|---|
 | 5 000 | 18.2 s | 1.10 s | **16.6×** |
 | 50 000 | 2935 s (49 min) | 5.40 s | **544×** |
 
-The gap widens super-linearly (sksurv ≈ n^2.2; crforest ≈ n^0.7).
-Crforest also provides Aalen-Johansen CIF + Nelson-Aalen CHF that
+The gap widens super-linearly (sksurv ≈ n^2.2; comprisk ≈ n^0.7).
+comprisk also provides Aalen-Johansen CIF + Nelson-Aalen CHF that
 sksurv `low_memory=True` raises `NotImplementedError` for.
 
 **Scaling on a consumer desktop:** n = 10⁶ in **63 s** on i7-14700K,
@@ -159,15 +186,36 @@ sksurv `low_memory=True` raises `NotImplementedError` for.
 
 ## API
 
-Full parameter list in [`src/crforest/forest.py`](src/crforest/forest.py);
+Full parameter list in [`src/comprisk/forest.py`](src/comprisk/forest.py);
 usage by task in [docs/quickstart.md](docs/quickstart.md). Two splitrules
 are available: `logrankCR` (composite competing-risks log-rank, default)
 and `logrank` (cause-specific).
 
+## Migrating from crforest
+
+comprisk **0.3.1** is the same codebase as crforest 0.3.0 under a new name
+and a slightly broader scope. Update one line:
+
+```python
+# before
+from crforest import CompetingRiskForest
+
+# after
+from comprisk import CompetingRiskForest
+```
+
+The package is otherwise identical — same `CompetingRiskForest` API,
+same `equivalence="rfsrc"` mode, same minimal-depth feature selection,
+same GPU preview, same metrics module. Pin to `comprisk>=0.3.1` (or
+`crforest==0.3.0` on the legacy name); the `crforest` PyPI package will
+emit a deprecation pointer and stop receiving new releases. The GitHub
+URL `github.com/sunnyadn/crforest` auto-redirects to
+`github.com/sunnyadn/comprisk`.
+
 ## Documentation
 
 - [Quickstart](docs/quickstart.md) — common tasks with runnable code
-- [PRD](docs/prd.md) — what crforest aims to be at v1.0
+- [PRD](docs/prd.md) — what comprisk aims to be at v1.0
 - [Equivalence vs rfSRC](docs/equivalence-vs-rfsrc.md) — cross-library validation methodology
 - [References](docs/REFERENCES.md) — algorithmic provenance (Park-Miller, Bays-Durham, Wolbers 2009, Uno 2011, Cole & Hernán 2008, Breiman 2001, Ishwaran 2008/2014, etc.)
 
@@ -191,17 +239,18 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 ## Citation
 
 ```bibtex
-@software{yang_crforest_2026,
+@software{yang_comprisk_2026,
   author    = {Yang, Sunny and Zhao, Wanqi},
-  title     = {{crforest: competing-risks random survival forests for Python}},
+  title     = {{comprisk: a Python toolkit for competing risks}},
   year      = {2026},
   publisher = {Zenodo},
-  version   = {0.2.0},
-  doi       = {10.5281/zenodo.19984110},
+  version   = {0.3.1},
+  doi       = {10.5281/zenodo.19876282},
   url       = {https://doi.org/10.5281/zenodo.19876282},
 }
 ```
 
-DOI is version-specific. GitHub's "Cite this repository" button
-generates the same record from [`CITATION.cff`](CITATION.cff).
-Algorithmic references in [`docs/REFERENCES.md`](docs/REFERENCES.md).
+DOI is concept-level (always resolves to the latest version). GitHub's
+"Cite this repository" button generates a version-specific record from
+[`CITATION.cff`](CITATION.cff). Algorithmic references in
+[`docs/REFERENCES.md`](docs/REFERENCES.md).

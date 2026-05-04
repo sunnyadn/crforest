@@ -17,7 +17,7 @@ POC gate: if non-cupy tottime fraction ≥ 70% on real CHF → η's 99% finding
 extends to wide-p; Plan 3 Phase A (full-device pipeline) can keep its
 2-3× ceiling target. If ≤ 50% → revise.
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra gpu --extra dev \\
        python -u validation/spikes/lambda/exp1_eta_on_real_chf.py \\
        2>&1 | tee /tmp/lambda_exp1.log'
@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from _lambda_helpers import load_chf, make_synthetic
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 SEED = 0
 NTREE_TIMED = 1  # single-tree, n_jobs=1 — clean per-tree wall
@@ -66,12 +66,12 @@ def aggregate_cupy_share(profile: cProfile.Profile) -> dict[str, float]:
     """Sum tottime grouped by file-prefix. Picks out cupy vs everything else.
 
     Uses the un-stripped pstats.Stats so absolute paths reveal module owner
-    (cupy / crforest / numpy / stdlib). The function name field also catches
+    (cupy / comprisk / numpy / stdlib). The function name field also catches
     built-in C method names like ``{method 'get' of 'cupy._core...' objects}``.
     """
     stats = pstats.Stats(profile)  # NOT strip_dirs — keep full paths
     cupy_tottime = 0.0
-    crforest_tottime = 0.0
+    comprisk_tottime = 0.0
     other_tottime = 0.0
     total_tottime = 0.0
     for func, (_cc, _nc, tt, _ct, _) in stats.stats.items():
@@ -80,14 +80,14 @@ def aggregate_cupy_share(profile: cProfile.Profile) -> dict[str, float]:
         total_tottime += tt
         if "cupy" in haystack or "/cuda/" in haystack:
             cupy_tottime += tt
-        elif "crforest" in haystack:
-            crforest_tottime += tt
+        elif "comprisk" in haystack:
+            comprisk_tottime += tt
         else:
             other_tottime += tt
     return {
         "total_tottime": total_tottime,
         "cupy_tottime": cupy_tottime,
-        "crforest_tottime": crforest_tottime,
+        "comprisk_tottime": comprisk_tottime,
         "other_tottime": other_tottime,
     }
 
@@ -137,8 +137,8 @@ def profile_one(label: str, X, t, e):
         flush=True,
     )
     print(
-        f"  crforest_tottime = {agg['crforest_tottime']:.3f}s "
-        f"({100 * agg['crforest_tottime'] / total:.1f}%)  "
+        f"  comprisk_tottime = {agg['comprisk_tottime']:.3f}s "
+        f"({100 * agg['comprisk_tottime'] / total:.1f}%)  "
         "[Python loop in build_flat_tree_gpu — Phase A removes]",
         flush=True,
     )
@@ -149,7 +149,7 @@ def profile_one(label: str, X, t, e):
         flush=True,
     )
 
-    addressable = agg["cupy_tottime"] + agg["crforest_tottime"] + agg["other_tottime"]
+    addressable = agg["cupy_tottime"] + agg["comprisk_tottime"] + agg["other_tottime"]
     print(
         f"  Phase-A addressable = {100 * addressable / wall_clean:.1f}% of WALL "
         f"(host orch + sync round-trips + host numpy; "

@@ -9,7 +9,7 @@ import pytest
 @pytest.mark.parametrize("seed", list(range(10)))
 def test_event_counts_roundtrip_random(seed: int) -> None:
     """to_sparse_event_counts -> to_dense_event_counts must round-trip bit-exactly."""
-    from crforest._sparse_leaves import (
+    from comprisk._sparse_leaves import (
         to_dense_event_counts,
         to_sparse_event_counts,
     )
@@ -42,7 +42,7 @@ def test_event_counts_roundtrip_random(seed: int) -> None:
 )
 def test_event_counts_dtype_boundary(max_val: int, expected_dtype) -> None:
     """δ.3 dtype selector: uint8 if max ≤ 255 else uint16."""
-    from crforest._sparse_leaves import to_sparse_event_counts
+    from comprisk._sparse_leaves import to_sparse_event_counts
 
     dense = np.zeros((2, 50), dtype=np.uint32)
     if max_val > 0:
@@ -55,7 +55,7 @@ def test_event_counts_dtype_boundary(max_val: int, expected_dtype) -> None:
 
 def test_event_counts_all_zero() -> None:
     """Degenerate case: all-zero leaf returns empty COO arrays."""
-    from crforest._sparse_leaves import (
+    from comprisk._sparse_leaves import (
         to_dense_event_counts,
         to_sparse_event_counts,
     )
@@ -72,7 +72,7 @@ def test_event_counts_all_zero() -> None:
 @pytest.mark.parametrize("seed", list(range(10)))
 def test_at_risk_roundtrip_random(seed: int) -> None:
     """at_risk step-function encoding round-trips bit-exactly."""
-    from crforest._sparse_leaves import to_dense_at_risk, to_sparse_at_risk
+    from comprisk._sparse_leaves import to_dense_at_risk, to_sparse_at_risk
 
     rng = np.random.default_rng(seed)
     n_time_bins = rng.integers(10, 400)
@@ -98,7 +98,7 @@ def test_at_risk_roundtrip_random(seed: int) -> None:
 
 def test_at_risk_monotone_decreasing_constant_segments() -> None:
     """Hand-constructed leaf: breakpoints at indices 0, 3, 6."""
-    from crforest._sparse_leaves import to_dense_at_risk, to_sparse_at_risk
+    from comprisk._sparse_leaves import to_dense_at_risk, to_sparse_at_risk
 
     dense = np.array([5, 5, 5, 3, 3, 3, 1, 1, 1, 1], dtype=np.uint32)
     sparse = to_sparse_at_risk(dense)
@@ -110,8 +110,8 @@ def test_at_risk_monotone_decreasing_constant_segments() -> None:
 
 def test_hist_tree_node_lazy_dense_properties() -> None:
     """HistTreeNode.event_counts_dense materializes from sparse on access."""
-    from crforest._hist_tree import HistTreeNode
-    from crforest._sparse_leaves import to_sparse_at_risk, to_sparse_event_counts
+    from comprisk._hist_tree import HistTreeNode
+    from comprisk._sparse_leaves import to_sparse_at_risk, to_sparse_event_counts
 
     dense_ec = np.zeros((2, 100), dtype=np.uint32)
     dense_ec[0, 10] = 3
@@ -153,7 +153,7 @@ def test_pickle_size_regression_small_fixture() -> None:
     """
     import pickle
 
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     n = 200
     p = 5

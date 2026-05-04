@@ -1,4 +1,4 @@
-"""Paired-seed runner: fits crforest and loads rfSRC baseline, scores both."""
+"""Paired-seed runner: fits comprisk and loads rfSRC baseline, scores both."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from joblib import Parallel, delayed
 
-from crforest import concordance_index_cr
+from comprisk import concordance_index_cr
 from validation.baselines import fit_reference_baseline, load_baseline, make_forest
 from validation.config import HarnessConfig
 from validation.datasets import load as load_dataset
@@ -17,7 +17,7 @@ from validation.splits import load as load_splits
 class SeedResult:
     dataset: str
     seed: int
-    c_crforest: float
+    c_comprisk: float
     c_rfsrc: float
     delta_c: float
 
@@ -48,7 +48,7 @@ def _run_one(dataset: str, seed: int, config: HarnessConfig, compare: str = "rfs
     return SeedResult(
         dataset=dataset,
         seed=seed,
-        c_crforest=float(c_cr),
+        c_comprisk=float(c_cr),
         c_rfsrc=float(c_base),  # field name retained for schema compatibility
         delta_c=float(c_cr - c_base),
     )
@@ -61,7 +61,7 @@ def run_dataset(
     n_jobs: int = -1,
     compare: str = "rfsrc",
 ) -> list[SeedResult]:
-    """Fit + score crforest; compare against baseline; return results."""
+    """Fit + score comprisk; compare against baseline; return results."""
     results = Parallel(n_jobs=n_jobs)(
         delayed(_run_one)(dataset, seed, config, compare) for seed in seeds
     )

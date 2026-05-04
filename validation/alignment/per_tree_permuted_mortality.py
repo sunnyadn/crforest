@@ -11,7 +11,7 @@ For each tree t and feature f (test: f=0):
   1. Get OOB indices for tree t.
   2. Generate ONE permutation π via numpy (canonical, lib-agnostic).
   3. Build X_perm: X with column f shuffled within OOB rows by π.
-  4. crforest: _predict_tree_mortality(forest.trees_[t], X_perm[oob], ...).
+  4. comprisk: _predict_tree_mortality(forest.trees_[t], X_perm[oob], ...).
   5. rfSRC: predict.rfsrc(fit, newdata=X_perm, get.tree=c(t+1))$predicted.oob[oob].
   6. Compare cell-by-cell.
 """
@@ -27,8 +27,8 @@ from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr
 from scipy.stats import spearmanr
 
-from crforest import CompetingRiskForest
-from crforest._importance import _predict_tree_mortality
+from comprisk import CompetingRiskForest
+from comprisk._importance import _predict_tree_mortality
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -106,7 +106,7 @@ def main() -> int:
         X_perm = Xtr.copy()
         X_perm[oob_idx, feat_to_perm] = Xtr[oob_idx[perm], feat_to_perm]
 
-        # crforest per-tree on permuted X (full input, but only oob_idx is changed)
+        # comprisk per-tree on permuted X (full input, but only oob_idx is changed)
         cr_mort = np.zeros((2, len(oob_idx)), dtype=np.float64)
         for ci, c in enumerate([1, 2]):
             cr_mort[ci] = _predict_tree_mortality(

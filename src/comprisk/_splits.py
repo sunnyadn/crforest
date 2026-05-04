@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from crforest._estimators import reverse_cumsum
+from comprisk._estimators import reverse_cumsum
 
 
 @dataclass

@@ -1,9 +1,9 @@
 """P2.6 step 1 diagnostic: per-sample CIF comparison on follic seed 0.
 
-Fits crforest (default mode) and randomForestSRC on the same training fold,
+Fits comprisk (default mode) and randomForestSRC on the same training fold,
 then compares:
 
-1. Training-side time grids: crforest's ``time_grid_`` vs rfSRC's
+1. Training-side time grids: comprisk's ``time_grid_`` vs rfSRC's
    ``fit$time.interest``. Mismatch at the last index is a time-grid (H1)
    signal.
 2. Per-test-sample cause-1 CIF curves on a common evaluation grid
@@ -28,7 +28,7 @@ import argparse
 
 import numpy as np
 
-from crforest import CompetingRiskForest, concordance_index_cr
+from comprisk import CompetingRiskForest, concordance_index_cr
 from validation.alignment import _rpy2_available
 from validation.datasets import load as load_dataset
 
@@ -106,7 +106,7 @@ def _fit_rfsrc(
     }
 
 
-def _fit_crforest(
+def _fit_comprisk(
     X_train: np.ndarray,
     time_train: np.ndarray,
     event_train: np.ndarray,
@@ -184,7 +184,7 @@ def _pointwise_cif_gap(
 
 
 def _cr_tree_stats(tree) -> tuple[int, int, list[int]]:
-    """Walk a crforest tree, return (n_leaves, max_depth, _)."""
+    """Walk a comprisk tree, return (n_leaves, max_depth, _)."""
     n_leaves = 0
     max_depth = 0
 
@@ -202,16 +202,16 @@ def _cr_tree_stats(tree) -> tuple[int, int, list[int]]:
 
 
 def _cr_leaf_sizes(forest, X_train: np.ndarray) -> list[int]:
-    """Return leaf-sample-size distribution across all trees of a crforest."""
-    from crforest._binning import apply_bins
-    from crforest._tree import _flatten_tree
-    from crforest._tree_flat import predict_leaf_indices
+    """Return leaf-sample-size distribution across all trees of a comprisk."""
+    from comprisk._binning import apply_bins
+    from comprisk._tree import _flatten_tree
+    from comprisk._tree_flat import predict_leaf_indices
 
     if forest.mode == "default":
         X_input = apply_bins(X_train, forest.bin_edges_)
 
         def flatten(tree):
-            from crforest._hist_tree import _flatten_tree_hist
+            from comprisk._hist_tree import _flatten_tree_hist
 
             return _flatten_tree_hist(tree)
     else:
@@ -232,7 +232,7 @@ def compare_tree_structure(
     forest_cr,
     X_train: np.ndarray,
 ) -> None:
-    """Compare crforest and rfSRC tree-structure distributions on the same data.
+    """Compare comprisk and rfSRC tree-structure distributions on the same data.
 
     Assumes rfSRC fit object is stored in R as ``fit__`` (left by ``_fit_rfsrc``).
     """
@@ -243,7 +243,7 @@ def compare_tree_structure(
 
     converter = _rpy2_converter()
 
-    # crforest side
+    # comprisk side
     cr_leaves: list[int] = []
     cr_depths: list[int] = []
     for tree in forest_cr.trees_:
@@ -274,14 +274,14 @@ def compare_tree_structure(
         )
 
     print("\n=== Tree structure (n_leaves per tree) ===")
-    print(_stats(cr_leaves, "crforest"))
+    print(_stats(cr_leaves, "comprisk"))
     print(_stats(rf_leaves, "rfSRC   "))
 
-    print("\n=== Tree depth per tree (crforest only — rfSRC nativeArray lacks direct depth) ===")
-    print(_stats(cr_depths, "crforest"))
+    print("\n=== Tree depth per tree (comprisk only — rfSRC nativeArray lacks direct depth) ===")
+    print(_stats(cr_depths, "comprisk"))
 
     print("\n=== Leaf sample sizes ===")
-    print(_stats(cr_leaf_sizes, "crforest"))
+    print(_stats(cr_leaf_sizes, "comprisk"))
     print(_stats(rf_leaf_sizes, "rfSRC   "))
 
 
@@ -352,9 +352,9 @@ def compare_root_aj(
     has one leaf = the full training set, so pred$cif on training *is* the
     root-level AJ estimate.
     """
-    from crforest._estimators import aalen_johansen
+    from comprisk._estimators import aalen_johansen
 
-    # crforest side: AJ on the full training fold.
+    # comprisk side: AJ on the full training fold.
     unique_times = np.sort(np.unique(time_train))
     cif_cr = aalen_johansen(time_train, event_train, unique_times, n_causes=n_causes)
 
@@ -403,7 +403,7 @@ def compare_root_aj(
 
     print("\n=== Root-level AJ comparison (no splitting, full training fold) ===")
     print(
-        f"  crforest grid: len={len(unique_times)} t_last={unique_times[-1]:.4f}  "
+        f"  comprisk grid: len={len(unique_times)} t_last={unique_times[-1]:.4f}  "
         f"(includes censor times)"
     )
     print(
@@ -411,7 +411,7 @@ def compare_root_aj(
         f"(event times only)"
     )
 
-    # Evaluate both on rfSRC's grid (which is a subset of crforest's in general).
+    # Evaluate both on rfSRC's grid (which is a subset of comprisk's in general).
     # cif_cr shape: (n_causes, n_unique_times); we want cause-1 at t in time_interest.
     def eval_cr(ts):
         idx = np.clip(np.searchsorted(unique_times, ts, side="right") - 1, 0, len(unique_times) - 1)
@@ -433,7 +433,7 @@ def compare_root_aj(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="P2.6 diagnostic: compare crforest and randomForestSRC CIFs on a matched fold."
+        description="P2.6 diagnostic: compare comprisk and randomForestSRC CIFs on a matched fold."
     )
     parser.add_argument("--dataset", default="follic")
     parser.add_argument("--seed", type=int, default=0)
@@ -445,7 +445,7 @@ def main() -> None:
         "--time-grid",
         type=int,
         default=200,
-        help="crforest time_grid max points (ignored in reference mode)",
+        help="comprisk time_grid max points (ignored in reference mode)",
     )
     parser.add_argument(
         "--root-aj",
@@ -490,7 +490,7 @@ def main() -> None:
 
     print(f"[{args.dataset} seed={args.seed}] n_train={len(train_idx)} n_test={len(test_idx)}")
 
-    cr = _fit_crforest(
+    cr = _fit_comprisk(
         X[train_idx],
         time[train_idx],
         event[train_idx],
@@ -503,7 +503,7 @@ def main() -> None:
         min_samples_split=args.min_samples_split,
     )
     print(
-        f"[crforest] mode={args.mode} time_grid={args.time_grid} "
+        f"[comprisk] mode={args.mode} time_grid={args.time_grid} "
         f"min_samples_leaf={args.min_samples_leaf} "
         f"min_samples_split={args.min_samples_split}"
     )
@@ -519,12 +519,12 @@ def main() -> None:
     )
 
     print("\n=== Time grids (training fold) ===")
-    _summarize_grid("crforest time_grid_", cr["time_grid"])
+    _summarize_grid("comprisk time_grid_", cr["time_grid"])
     _summarize_grid("rfSRC time.interest", rf["time_grid"])
     n_unique_event_train = len(np.unique(time[train_idx][event[train_idx] > 0]))
     print(f"  unique event times in train fold: {n_unique_event_train}")
     last_match = np.isclose(cr["time_grid"][-1], rf["time_grid"][-1])
-    print(f"  last-time match (crforest vs rfSRC): {last_match}")
+    print(f"  last-time match (comprisk vs rfSRC): {last_match}")
     len_match = len(cr["time_grid"]) == len(rf["time_grid"])
     print(f"  grid length match: {len_match}")
     if len_match:
@@ -532,7 +532,7 @@ def main() -> None:
         print(f"  max pointwise grid diff: {max_gap:.6e}")
 
     print("\n=== Per-sample risk (cause=1, final time of each grid) ===")
-    risk_cr = cr["cif"][:, -1, args.cause - 1]  # crforest last time
+    risk_cr = cr["cif"][:, -1, args.cause - 1]  # comprisk last time
     risk_rf = rf["cif"][:, -1, args.cause - 1]  # rfSRC last time
     diff = risk_cr - risk_rf
     print(f"  risk_cr:  mean={risk_cr.mean():.4f} std={risk_cr.std():.4f}")
@@ -546,7 +546,7 @@ def main() -> None:
     c_cr = concordance_index_cr(event[test_idx], time[test_idx], risk_cr, cause=args.cause)
     c_rf = concordance_index_cr(event[test_idx], time[test_idx], risk_rf, cause=args.cause)
     print(f"\n=== C-index (cause={args.cause}) ===")
-    print(f"  crforest: {c_cr:.4f}")
+    print(f"  comprisk: {c_cr:.4f}")
     print(f"  rfSRC:    {c_rf:.4f}")
     print(f"  delta_c:  {c_cr - c_rf:+.4f}")
 

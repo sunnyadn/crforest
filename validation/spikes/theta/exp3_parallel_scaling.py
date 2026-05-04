@@ -29,8 +29,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _build_tree_njit import build_tree_njit
 from _dgp import load
 
-from crforest._binning import apply_bins, fit_bin_edges
-from crforest._time_grid import coarsen_time_grid, fit_time_grid
+from comprisk._binning import apply_bins, fit_bin_edges
+from comprisk._time_grid import coarsen_time_grid, fit_time_grid
 
 LOG_DIR = Path(__file__).parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)

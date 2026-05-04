@@ -15,13 +15,13 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from crforest._estimators import (
+from comprisk._estimators import (
     aalen_johansen_from_counts,
     leaf_counts_from_time_event,
     nelson_aalen_from_counts,
 )
-from crforest._splits import find_best_split
-from crforest._tree_flat import FlatTree, flatten_tree, predict_with_flat
+from comprisk._splits import find_best_split
+from comprisk._tree_flat import FlatTree, flatten_tree, predict_with_flat
 
 
 @dataclass

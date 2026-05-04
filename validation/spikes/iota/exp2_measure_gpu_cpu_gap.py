@@ -20,7 +20,7 @@ def _max_diff(a, b):
 
 
 def _run(device, seed):
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     rng = np.random.default_rng(0)
     n, p = 100_000, 8

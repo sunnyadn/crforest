@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from crforest._time_grid import fit_time_grid
+from comprisk._time_grid import fit_time_grid
 
 
 def test_fit_time_grid_uses_all_event_times_when_few():

@@ -7,7 +7,7 @@ established by scikit-survival, is to pack both into a structured numpy
 array.
 
 This module exposes :class:`Surv` mirroring scikit-survival's API so
-existing sksurv users can pipe their ``y`` straight into crforest, plus
+existing sksurv users can pipe their ``y`` straight into comprisk, plus
 :func:`is_structured_survival_y` and :func:`unpack_structured_y` used by
 ``CompetingRiskForest.fit`` / ``score`` to dispatch between the
 three-positional-argument legacy form and the sklearn-friendly
@@ -30,7 +30,7 @@ class Surv:
     Examples
     --------
     >>> import numpy as np
-    >>> from crforest import Surv
+    >>> from comprisk import Surv
     >>> y = Surv.from_arrays(event=[0, 1, 2, 0], time=[1.0, 2.0, 3.0, 0.5])
     >>> y.dtype.names
     ('event', 'time')
@@ -99,7 +99,7 @@ def unpack_structured_y(y) -> tuple[np.ndarray, np.ndarray]:
     if not is_structured_survival_y(y):
         raise TypeError(
             "y must be a structured array with 'time' and 'event' fields. "
-            "Build it via crforest.Surv.from_arrays(event=..., time=...) or "
+            "Build it via comprisk.Surv.from_arrays(event=..., time=...) or "
             "use the legacy three-argument form fit(X, time, event)."
         )
     return np.asarray(y["time"]), np.asarray(y["event"])

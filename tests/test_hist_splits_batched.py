@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from crforest._hist_splits import (
+from comprisk._hist_splits import (
     _best_split_in_feature,
     _best_split_in_feature_lr,
     _node_histograms,
@@ -145,7 +145,7 @@ def test_batched_all_false_mask_returns_minus_one() -> None:
 
 def test_find_best_split_hist_use_batched_matches_legacy() -> None:
     """Full-path dispatcher: use_batched=True should agree with use_batched=False on the same inputs."""
-    from crforest._hist_splits import find_best_split_hist
+    from comprisk._hist_splits import find_best_split_hist
 
     rng = np.random.default_rng(3)
     n, p = 1500, 8

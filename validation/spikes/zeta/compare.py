@@ -1,6 +1,6 @@
-"""zeta benchmark — compare crforest vs rfSRC timings and emit decision report.
+"""zeta benchmark — compare comprisk vs rfSRC timings and emit decision report.
 
-Loads `timings/{crforest,rfsrc}_timings.parquet`, fits `log(t) = alpha*log(n) + beta`
+Loads `timings/{comprisk,rfsrc}_timings.parquet`, fits `log(t) = alpha*log(n) + beta`
 per lib, extrapolates to n=100k, applies the spec section-5 exit rule, and writes
 `reports/zeta_report_<timestamp>.md`.
 
@@ -105,24 +105,24 @@ def classify(ratio: float, mem_ok: bool | None) -> str:
 def _rationale(token: str, ratio: float) -> str:
     if token == "DONE":
         return (
-            f"crforest extrapolated fit at n=100k is {ratio:.2f}x rfSRC -- at or below 1/3. "
+            f"comprisk extrapolated fit at n=100k is {ratio:.2f}x rfSRC -- at or below 1/3. "
             "Kernel rewrite not needed; PRD 6.1 should be re-anchored to the "
             "measured rfSRC baseline."
         )
     if token == "DONE-speed-memory-flagged":
         return (
-            f"crforest fit at n=100k is {ratio:.2f}x rfSRC on speed (at or below 1/3), but "
+            f"comprisk fit at n=100k is {ratio:.2f}x rfSRC on speed (at or below 1/3), but "
             "memory gate is not satisfied (or not measured). Speed scope closed; "
             "memory follow-up recommended."
         )
     if token == "SOFT DONE":
         return (
-            f"crforest fit at n=100k is {ratio:.2f}x rfSRC -- within 1x but above "
+            f"comprisk fit at n=100k is {ratio:.2f}x rfSRC -- within 1x but above "
             "1/3. Ship current main as-is; kernel rewrite remains on v1.1, "
             "not blocking."
         )
     return (
-        f"crforest fit at n=100k is {ratio:.2f}x rfSRC -- over 1x. Open a "
+        f"comprisk fit at n=100k is {ratio:.2f}x rfSRC -- over 1x. Open a "
         "follow-on kernel-rewrite sprint (beta''-class scope)."
     )
 
@@ -167,11 +167,11 @@ def _machine_fingerprint() -> dict[str, str]:
         except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
             pass
     try:
-        fp["crforest_sha"] = subprocess.check_output(
+        fp["comprisk_sha"] = subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"], cwd=HERE, text=True
         ).strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
-        fp["crforest_sha"] = "unknown"
+        fp["comprisk_sha"] = "unknown"
     try:
         out = subprocess.check_output(
             [
@@ -193,7 +193,7 @@ def _machine_fingerprint() -> dict[str, str]:
 
 def _fit_wall_table(cr: pd.DataFrame, rf: pd.DataFrame) -> str:
     rows = [
-        "| n | crforest fit_wall_s (mean ± std) | rfSRC fit_wall_s (mean ± std) |",
+        "| n | comprisk fit_wall_s (mean ± std) | rfSRC fit_wall_s (mean ± std) |",
         "|---|---|---|",
     ]
     for n in sorted(set(cr["n"]) | set(rf["n"])):
@@ -219,7 +219,7 @@ def _fit_wall_table(cr: pd.DataFrame, rf: pd.DataFrame) -> str:
 
 
 def _rss_table(cr: pd.DataFrame, rf: pd.DataFrame) -> str:
-    rows = ["| n | crforest peak_rss_mb | rfSRC peak_rss_mb |", "|---|---|---|"]
+    rows = ["| n | comprisk peak_rss_mb | rfSRC peak_rss_mb |", "|---|---|---|"]
     for n in sorted(set(cr["n"]) | set(rf["n"])):
         cr_rss = cr[cr["n"] == n]["peak_rss_mb"].max()
         rf_rss = rf[rf["n"] == n]["peak_rss_mb"].max()
@@ -235,7 +235,7 @@ def write_report(cr: pd.DataFrame, rf: pd.DataFrame) -> Path:
     out = REPORTS / f"zeta_report_{ts}.md"
 
     fp = _machine_fingerprint()
-    cr_fit = _fit_lib(cr, "crforest")
+    cr_fit = _fit_lib(cr, "comprisk")
     rf_fit = _fit_lib(rf, "rfSRC")
     ratio = cr_fit.extrap_100k_s / rf_fit.extrap_100k_s
     ratio_lo = cr_fit.extrap_band_lo / rf_fit.extrap_band_hi
@@ -249,12 +249,12 @@ def write_report(cr: pd.DataFrame, rf: pd.DataFrame) -> Path:
         mem_ok = None
         mem_line = (
             f"rfSRC peak_rss_mb at n=50k is unmeasured (see provenance). "
-            f"crforest = {cr_rss_50k:.0f} MB. Memory gate: **UNMEASURED**."
+            f"comprisk = {cr_rss_50k:.0f} MB. Memory gate: **UNMEASURED**."
         )
     else:
         mem_ok = bool(cr_rss_50k <= rf_rss_50k)
         mem_line = (
-            f"crforest peak_rss_mb at n=50k = {cr_rss_50k:.0f} MB, "
+            f"comprisk peak_rss_mb at n=50k = {cr_rss_50k:.0f} MB, "
             f"rfSRC = {rf_rss_50k:.0f} MB. mem_ok = **{mem_ok}**."
         )
 
@@ -269,7 +269,7 @@ def write_report(cr: pd.DataFrame, rf: pd.DataFrame) -> Path:
 
     predict_wall_cr = cr[cr["predict_wall_s"].notna()]["predict_wall_s"]
     predict_line = (
-        f"crforest predict_cif wall at n=50k seed=0: {predict_wall_cr.iloc[0]:.1f} s "
+        f"comprisk predict_cif wall at n=50k seed=0: {predict_wall_cr.iloc[0]:.1f} s "
         "(secondary, not in exit rule). rfSRC predict not measured."
         if len(predict_wall_cr) > 0
         else "No predict_wall captured."
@@ -278,7 +278,7 @@ def write_report(cr: pd.DataFrame, rf: pd.DataFrame) -> Path:
     parts = [
         f"# zeta head-to-head benchmark report -- {ts}",
         "",
-        f"**crforest SHA:** `{fp.get('crforest_sha', 'unknown')}` | "
+        f"**comprisk SHA:** `{fp.get('comprisk_sha', 'unknown')}` | "
         f"**rfSRC:** {fp.get('randomForestSRC', 'unknown')} | "
         f"**R:** {fp.get('R', 'unknown')} | "
         f"**Python:** {fp.get('python', 'unknown')}",
@@ -288,23 +288,23 @@ def write_report(cr: pd.DataFrame, rf: pd.DataFrame) -> Path:
         f"{fp.get('ram_gb', '?')} GB RAM | "
         f"{fp.get('os', 'unknown')}",
         "",
-        "**Thread budget:** crforest `n_jobs=-1` | rfSRC `rf.cores=10` + "
+        "**Thread budget:** comprisk `n_jobs=-1` | rfSRC `rf.cores=10` + "
         "`OMP_NUM_THREADS=10` (single-process OpenMP).",
         "",
         "## 1. Methodological caveats (READ FIRST)",
         "",
         "The rfSRC timings in this report were measured on a simpler DGP "
         "(`p=10`, separate lambda per cause) via `/tmp/rfsrc_openmp_bench.R`, "
-        "NOT the spec's `p=60` Weibull data generated by `run_crforest.py`. "
+        "NOT the spec's `p=60` Weibull data generated by `run_comprisk.py`. "
         'The rfSRC side also used `splitrule="logrank"` (spec: `"logrankCR"`) '
         "and a single seed, with `n//5` held out from training. "
         "See `timings/rfsrc_timings.parquet.provenance.md` for the full list.",
         "",
-        "**Implication.** The ratio `crforest / rfSRC` is **directionally "
+        "**Implication.** The ratio `comprisk / rfSRC` is **directionally "
         "indicative, not strict**. A spec-compliant rfSRC re-run reading the "
         "same `data/weibull_n*.parquet` with `logrankCR` is a follow-up to "
         "tighten the anchoring. The magnitude of the strategic finding -- "
-        "whether crforest is faster or slower than rfSRC at n=100k -- is "
+        "whether comprisk is faster or slower than rfSRC at n=100k -- is "
         "robust to these divergences given the observed gap size.",
         "",
         "## 2. Per-(lib, n, seed) fit-wall",
@@ -319,7 +319,7 @@ def write_report(cr: pd.DataFrame, rf: pd.DataFrame) -> Path:
         "",
         "| lib | alpha | beta | r^2 | fit_wall_s @ n=100k (+/- seed-band) |",
         "|---|---|---|---|---|",
-        f"| crforest | {cr_fit.alpha:.3f} | {cr_fit.beta:.3f} | {cr_fit.r2:.4f} | "
+        f"| comprisk | {cr_fit.alpha:.3f} | {cr_fit.beta:.3f} | {cr_fit.r2:.4f} | "
         f"{cr_fit.extrap_100k_s:.0f} ({cr_fit.extrap_band_lo:.0f} - {cr_fit.extrap_band_hi:.0f}) |",
         f"| rfSRC    | {rf_fit.alpha:.3f} | {rf_fit.beta:.3f} | {rf_fit.r2:.4f} | "
         f"{rf_fit.extrap_100k_s:.0f} ({rf_fit.extrap_band_lo:.0f} - {rf_fit.extrap_band_hi:.0f}) |",
@@ -347,7 +347,7 @@ def write_report(cr: pd.DataFrame, rf: pd.DataFrame) -> Path:
         "",
         "---",
         "",
-        "_Source_: `validation/spikes/zeta/timings/{crforest,rfsrc}_timings.parquet`. "
+        "_Source_: `validation/spikes/zeta/timings/{comprisk,rfsrc}_timings.parquet`. "
         "Generated by `compare.py`. Spec: "
         "`docs/superpowers/specs/2026-04-23-zeta-head-to-head-benchmark-design.md` (gitignored).",
     ]
@@ -389,7 +389,7 @@ def main() -> None:
     if args.self_test:
         self_test()
         return
-    cr = pd.read_parquet(TIMINGS / "crforest_timings.parquet")
+    cr = pd.read_parquet(TIMINGS / "comprisk_timings.parquet")
     rf = pd.read_parquet(TIMINGS / "rfsrc_timings.parquet")
     out = write_report(cr, rf)
     print(f"wrote {out}", flush=True)

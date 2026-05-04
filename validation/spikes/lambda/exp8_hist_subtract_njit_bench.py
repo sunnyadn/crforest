@@ -14,7 +14,7 @@ For real CHF level-d nodes (n_node ranging 5k → 50 → 5), subtract path
 is O(constant) regardless of n_node, while from-scratch grows linearly.
 At n_node=10_000 we expect subtract to be 100×+ faster.
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra dev \\
        python -u validation/spikes/lambda/exp8_hist_subtract_njit_bench.py'
 (or run on Mac since no GPU needed)

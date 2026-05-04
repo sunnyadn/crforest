@@ -1,8 +1,8 @@
-"""Cross-lib alignment of Uno IPCW C-index between crforest and rfSRC.
+"""Cross-lib alignment of Uno IPCW C-index between comprisk and rfSRC.
 
 Patches rfSRC (RFSRC_TRACE_UNO=<path>) to dump per-observation IPCW
 weights and per-call accumulators from `getCRConcordanceIndexIPCW_Fenwick`.
-We feed rfSRC's exported (per-call) weights into crforest's
+We feed rfSRC's exported (per-call) weights into comprisk's
 `concordance_index_uno_cr` and assert per-call |Δc| < 1e-5 across
 hd / follic / pbc / synthetic.
 
@@ -32,7 +32,7 @@ import rpy2.robjects as ro
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr
 
-from crforest.metrics import concordance_index_uno_cr
+from comprisk.metrics import concordance_index_uno_cr
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 
@@ -146,7 +146,7 @@ def parse_trace(path: Path) -> list[dict]:
 
 
 def reproduce_call(call: dict, time_train: np.ndarray, event_train: np.ndarray) -> float | None:
-    """For one rfSRC call record, recompute the C-index in crforest using
+    """For one rfSRC call record, recompute the C-index in comprisk using
     rfSRC's exported weights and verify it matches rfSRC's numerW/denomW.
     Returns |Δc|, or None if obsSize doesn't match training data."""
     if len(call["weight"]) != len(time_train):

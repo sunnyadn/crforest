@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 
 def _toy_dataset(n=300, p=4, seed=0):
@@ -44,7 +44,7 @@ def test_default_path_uses_flat_tree_representation():
         n_jobs=1,
     ).fit(X, time, event)
     # New default mode produces FlatTree directly (no HistTreeNode in trees_).
-    from crforest._tree_flat import FlatTree
+    from comprisk._tree_flat import FlatTree
 
     assert all(isinstance(t, FlatTree) for t in forest.trees_)
 
@@ -61,6 +61,6 @@ def test_equivalence_preset_still_uses_old_path():
         equivalence="rfsrc",
         n_jobs=1,
     ).fit(X, time, event)
-    from crforest._hist_tree import HistTreeNode
+    from comprisk._hist_tree import HistTreeNode
 
     assert all(isinstance(t, HistTreeNode) for t in forest.trees_)

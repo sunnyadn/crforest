@@ -22,6 +22,6 @@ def test_pbc_smoke_1seed():
     results = run_dataset("pbc", seeds=[0], config=config, n_jobs=1)
     assert len(results) == 1
     r = results[0]
-    assert 0.0 <= r.c_crforest <= 1.0
+    assert 0.0 <= r.c_comprisk <= 1.0
     assert 0.0 <= r.c_rfsrc <= 1.0
     assert abs(r.delta_c) <= 1.0

@@ -23,7 +23,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 PROBE_LIBS = (
-    "crforest",
+    "comprisk",
     "numpy",
     "scipy",
     "pandas",

@@ -2,13 +2,13 @@
 
 Same shape as mode_vs_perf.py, but with the full Phase 1c alignment recipe:
 
-- crforest: ``equivalence="rfsrc"`` preset (flips rng_mode + split_ntime;
+- comprisk: ``equivalence="rfsrc"`` preset (flips rng_mode + split_ntime;
   exposes ``forest.inbag_``), mode in {default, reference}
 - rfSRC: ``bootstrap="by.user"`` with ``forest.inbag_``, ``nsplit=10``,
   ``ntime=0``, ``nodesize=15``, same mtry
 
 Reports cross-lib p95 CIF gap on the reference event-time grid plus wall-clock
-fit time for each of (crforest default+aligned, crforest reference+aligned,
+fit time for each of (comprisk default+aligned, comprisk reference+aligned,
 rfSRC bootstrap=by.user).
 
 Run:
@@ -26,7 +26,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
 from validation.alignment.equivalence_gate import (
     build_reference_grid,
@@ -93,7 +93,7 @@ def _fit_rfsrc_aligned(
     return ti, cif, fit_wall
 
 
-def _fit_crforest_aligned(
+def _fit_comprisk_aligned(
     X_train,
     time_train,
     event_train,
@@ -137,7 +137,7 @@ def run_cell(dataset: str, seed: int, n_estimators: int, skip_reference: bool) -
     X_te = X[test_idx]
     n_tr = len(train_idx)
 
-    grid_def, cif_def, t_def, forest_def = _fit_crforest_aligned(
+    grid_def, cif_def, t_def, forest_def = _fit_comprisk_aligned(
         X_tr, t_tr, e_tr, X_te, seed, n_estimators, "default"
     )
     if skip_reference:
@@ -145,12 +145,12 @@ def run_cell(dataset: str, seed: int, n_estimators: int, skip_reference: bool) -
         cif_ref = np.zeros((X_te.shape[0], 1, 2))
         t_ref = float("nan")
     else:
-        grid_ref, cif_ref, t_ref, _ = _fit_crforest_aligned(
+        grid_ref, cif_ref, t_ref, _ = _fit_comprisk_aligned(
             X_tr, t_tr, e_tr, X_te, seed, n_estimators, "reference"
         )
     # Use the default-mode forest's inbag_ to feed rfSRC. Reference and default
     # share the same bootstrap stream (same random_state), so reusing one
-    # inbag matrix keeps the rfSRC fit consistent with both crforest fits.
+    # inbag matrix keeps the rfSRC fit consistent with both comprisk fits.
     grid_rf, cif_rf, t_rf = _fit_rfsrc_aligned(
         X_tr,
         t_tr,

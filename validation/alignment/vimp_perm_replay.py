@@ -1,4 +1,4 @@
-"""Replay rfSRC's permutation choices through crforest, verify VIMP match.
+"""Replay rfSRC's permutation choices through comprisk, verify VIMP match.
 
 Decisive direct-evidence test for cross-lib OOB VIMP equivalence at
 use.uno=FALSE, block.size=ntree. Result on hd seed=1: Spearman=1.0,
@@ -8,7 +8,7 @@ algorithm.
 Pipeline: instrumented rfSRC at /tmp/rfsrc_patched_lib emits
 `vimp_perm tree=T a=feat b=dst_sample c=src_sample` events for every
 per-tree per-feature permutation; we parse the trace, replay those
-permutations through crforest's trees, and compare to rfSRC's reported
+permutations through comprisk's trees, and compare to rfSRC's reported
 $importance.
 
 Requires `bash _rfsrc_patches/regen.sh` first.
@@ -28,9 +28,9 @@ from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr
 from scipy.stats import pearsonr, spearmanr
 
-from crforest import CompetingRiskForest
-from crforest._importance import _predict_tree_mortality
-from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+from comprisk import CompetingRiskForest
+from comprisk._importance import _predict_tree_mortality
+from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -90,7 +90,7 @@ def main() -> int:
     _print(f"# vimp_perm_replay: dataset={dataset} seed={seed} ntree={ntree} p={p}")
     _print(f"# trace path: {TRACE_PATH}")
 
-    # crforest paired-bootstrap fit
+    # comprisk paired-bootstrap fit
     forest = CompetingRiskForest(
         n_estimators=ntree,
         min_samples_leaf=1,
@@ -145,7 +145,7 @@ def main() -> int:
         (t1 - 1, f0): m for (t1, f0), m in perm.items()
     }
 
-    # crforest unpermuted ensemble OOB mortality (baseline)
+    # comprisk unpermuted ensemble OOB mortality (baseline)
     ref_pred = np.zeros((2, n_tr), dtype=np.float64)
     count = np.zeros(n_tr, dtype=np.int64)
     for t in range(ntree):
@@ -179,7 +179,7 @@ def main() -> int:
             cause=c,
             weights=weights_oob,
         )
-    _print(f"  crforest reference C: c1={ref_C[0]:.5f}, c2={ref_C[1]:.5f}")
+    _print(f"  comprisk reference C: c1={ref_C[0]:.5f}, c2={ref_C[1]:.5f}")
 
     # For each feature, build per-feature ensemble using rfSRC's permutations
     cr_with_rf_perms_vimp = np.zeros((p, 2), dtype=np.float64)
@@ -228,7 +228,7 @@ def main() -> int:
             f"vimp[c2]={cr_with_rf_perms_vimp[feat, 1]:+.5f}"
         )
 
-    _print("\n## Compare crforest-replay-with-rfSRC-perms vs rfSRC-reported vimp")
+    _print("\n## Compare comprisk-replay-with-rfSRC-perms vs rfSRC-reported vimp")
     for ci in range(2):
         cr_v = cr_with_rf_perms_vimp[:, ci]
         rf_v = rf_imp[:, ci]

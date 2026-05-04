@@ -1,7 +1,7 @@
 # Algorithmic References
 
 This document lists the published references that ground each non-trivial
-algorithm in `src/crforest/`. It is the authoritative source for the
+algorithm in `src/comprisk/`. It is the authoritative source for the
 mathematical provenance of the package; every numerical literal,
 distributional assumption, and algorithmic step in the cited modules
 traces to one of the entries below.
@@ -10,7 +10,7 @@ The package is also informed by reference behaviour from
 [`randomForestSRC`](https://cran.r-project.org/package=randomForestSRC)
 (rfSRC; Ishwaran & Kogalur, GPL-3 licensed), which was used as a
 benchmarking target during development. The implementation under
-`src/crforest/` is independent — see the per-module clean-room rewrite
+`src/comprisk/` is independent — see the per-module clean-room rewrite
 commits — and its public API uses the string `equivalence='rfsrc'`
 purely as a behavioural label, not as a redistributed component.
 
@@ -22,7 +22,7 @@ include`); see `validation/alignment/_rfsrc_patches/README.md`.
 
 ---
 
-## Random number generation (`src/crforest/_aligned_rng.py`)
+## Random number generation (`src/comprisk/_aligned_rng.py`)
 
 * **Park, S.K. & Miller, K.W.** (1988). "Random number generators: good
   ones are hard to find." *Communications of the ACM* 31(10): 1192–1201.
@@ -66,7 +66,7 @@ the function's docstring.
 
 ---
 
-## Concordance metrics (`src/crforest/metrics.py`)
+## Concordance metrics (`src/comprisk/metrics.py`)
 
 * **Kaplan, E.L. & Meier, P.** (1958). "Nonparametric estimation from
   incomplete observations." *Journal of the American Statistical
@@ -116,7 +116,7 @@ the function's docstring.
 
 ---
 
-## Permutation variable importance (`src/crforest/_importance.py`)
+## Permutation variable importance (`src/comprisk/_importance.py`)
 
 * **Breiman, L.** (2001). "Random forests." *Machine Learning* 45(1):
   5–32.
@@ -151,7 +151,7 @@ the function's docstring.
 ## Survival-tree primitives
 
 The histogram-tree builder, splitting heuristics, time-grid coarsening,
-GPU kernels, and persistence layers under `src/crforest/_*.py` are
+GPU kernels, and persistence layers under `src/comprisk/_*.py` are
 project-internal designs informed by the RSF literature above and by
 standard gradient-boosted-tree histogram engineering (LightGBM,
 XGBoost, scikit-learn). They are not ports of any specific

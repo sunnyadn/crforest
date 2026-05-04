@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-from crforest._hist_splits import _best_split_in_feature, _node_histograms, find_best_split_hist
+from comprisk._hist_splits import _best_split_in_feature, _node_histograms, find_best_split_hist
 
 
 def _make_node_inputs(n: int, p: int, seed: int, n_bins: int, n_time_bins: int):

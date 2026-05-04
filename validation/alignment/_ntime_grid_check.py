@@ -1,4 +1,4 @@
-"""Quick check: does rfSRC's ntime=0 time grid match crforest's unique_times_
+"""Quick check: does rfSRC's ntime=0 time grid match comprisk's unique_times_
 on hd? If yes, ntime grid hypothesis is eliminated."""
 
 import numpy as np
@@ -7,7 +7,7 @@ import rpy2.robjects as ro
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -60,7 +60,7 @@ def main():
         rf_oob_dim = list(np.asarray(ro.r("dim(fit__$predicted.oob)"), dtype=np.int64))
 
     print(
-        f"crforest unique_times_  shape={cr_grid.shape}  range=[{cr_grid.min():.3f}, {cr_grid.max():.3f}]"
+        f"comprisk unique_times_  shape={cr_grid.shape}  range=[{cr_grid.min():.3f}, {cr_grid.max():.3f}]"
     )
     print(
         f"rfSRC time.interest      shape={rf_grid.shape}  range=[{rf_grid.min():.3f}, {rf_grid.max():.3f}]"
@@ -72,7 +72,7 @@ def main():
     else:
         print("\n>>> grids DIFFER")
         # Show first 10 elements of each
-        print(f"  crforest first 10: {cr_grid[:10]}")
+        print(f"  comprisk first 10: {cr_grid[:10]}")
         print(f"  rfSRC    first 10: {rf_grid[:10]}")
         # Show set diffs
         cr_set = set(np.round(cr_grid, 6))

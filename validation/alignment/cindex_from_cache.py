@@ -2,7 +2,7 @@
 
 The equivalence gate's cells persist (cif_cr, cif_rf) on the reference grid
 but not (test_time, test_event). This driver reloads splits, computes
-C-index for crforest and rfSRC risk scores per cell (risk = CIF at last
+C-index for comprisk and rfSRC risk scores per cell (risk = CIF at last
 ref_grid time), and reports cross-lib delta + within-lib paired variance
 per dataset. Noise-floor advisory: cross-lib |DeltaC| should be <=
 max(within-lib pair |DeltaC|).
@@ -24,7 +24,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest.metrics import concordance_index_cr
+from comprisk.metrics import concordance_index_cr
 from validation.alignment.equivalence_gate import load_cell
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -88,13 +88,13 @@ def aggregate(dataset: str, seeds: list[int]) -> dict:
 
 def _report(per_dataset: dict[str, dict], out_path: Path) -> None:
     lines = [
-        "# Paired-seed C-index agreement (crforest vs rfSRC)",
+        "# Paired-seed C-index agreement (comprisk vs rfSRC)",
         "",
         f"Timestamp: {_dt.datetime.now().isoformat(timespec='seconds')}",
         "",
         "Risk score = CIF at last reference-grid time (same convention as the",
         "equivalence_gate risk metric). C-index computed via",
-        "``crforest.metrics.concordance_index_cr`` on (test_event, test_time,",
+        "``comprisk.metrics.concordance_index_cr`` on (test_event, test_time,",
         "risk, cause=1). Cells loaded from",
         "``validation/alignment/_cache/<ds>_s<seed>.parquet`` -- no refits.",
         "",

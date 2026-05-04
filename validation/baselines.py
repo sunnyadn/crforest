@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.datasets import load as load_dataset
 from validation.splits import load as load_splits
 
@@ -86,7 +86,7 @@ def make_forest(config, seed: int, mode: str = "default") -> CompetingRiskForest
 
 
 def fit_reference_baseline(dataset: str, seed: int, config) -> np.ndarray:
-    """Fit a reference-mode crforest and return test-fold risk array.
+    """Fit a reference-mode comprisk and return test-fold risk array.
 
     Shape and dtype match ``load_baseline``'s return. ``config`` is a
     ``HarnessConfig`` carrying hyperparameters (n_estimators, etc).

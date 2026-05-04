@@ -22,7 +22,7 @@ Tests:
   4. n_at[right_via_subtract] == n_at[right_from_scratch]
   5. Repeat across 5 splits with varying split bin / sample size
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra dev \\
        python -u validation/spikes/lambda/exp7_histogram_subtraction_poc.py'
 """

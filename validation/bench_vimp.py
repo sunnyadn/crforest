@@ -12,7 +12,7 @@ import time
 
 import numpy as np
 
-from crforest.forest import CompetingRiskForest
+from comprisk.forest import CompetingRiskForest
 from validation.datasets import load as load_dataset
 
 

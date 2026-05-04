@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from crforest._splits import (
+from comprisk._splits import (
     _logrank_components,
     bin_times,
     composite_log_rank_statistic,
@@ -136,7 +136,7 @@ def test_logrank_components_std_uses_standard_at_risk():
     # Setup: at t=1, cause-2 event; at t=2, cause-1 event in the left child.
     # With standard at-risk, the cause-2 subject is gone at t=2 — so n_P(2) = 3,
     # not 4 (Lau-inclusive would have 4). This gives a different numerator.
-    from crforest._splits import _logrank_components, _logrank_components_std, bin_times
+    from comprisk._splits import _logrank_components, _logrank_components_std, bin_times
 
     time = np.array([1.0, 2.0, 3.0, 4.0])
     event = np.array([2, 1, 1, 1])
@@ -154,7 +154,7 @@ def test_logrank_components_std_uses_standard_at_risk():
 
 def test_logrank_components_std_equals_lau_when_no_competing_events():
     """When all events are cause 1, Lau add-back is zero; std must equal Lau exactly."""
-    from crforest._splits import _logrank_components, _logrank_components_std, bin_times
+    from comprisk._splits import _logrank_components, _logrank_components_std, bin_times
 
     time = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
     event = np.array([1, 0, 1, 0, 1, 1])  # only cause 1 events + some censoring
@@ -170,7 +170,7 @@ def test_logrank_components_std_equals_lau_when_no_competing_events():
 
 def test_logrank_components_std_numerator_hand_computed():
     """Pin exact numerator for a small hand-traced example."""
-    from crforest._splits import _logrank_components_std, bin_times
+    from comprisk._splits import _logrank_components_std, bin_times
 
     time = np.array([1.0, 2.0, 3.0, 4.0])
     event = np.array([2, 1, 1, 1])
@@ -183,7 +183,7 @@ def test_logrank_components_std_numerator_hand_computed():
 
 
 def test_cause_specific_log_rank_single_cause_matches_std_components():
-    from crforest._splits import (
+    from comprisk._splits import (
         _logrank_components_std,
         bin_times,
         cause_specific_log_rank_statistic,
@@ -201,7 +201,7 @@ def test_cause_specific_log_rank_single_cause_matches_std_components():
 
 
 def test_cause_specific_log_rank_degenerate_splits_return_zero():
-    from crforest._splits import bin_times, cause_specific_log_rank_statistic
+    from comprisk._splits import bin_times, cause_specific_log_rank_statistic
 
     time = np.array([1.0, 2.0, 3.0])
     event = np.array([1, 1, 1])
@@ -212,7 +212,7 @@ def test_cause_specific_log_rank_degenerate_splits_return_zero():
 
 def test_cause_specific_log_rank_weighted_pools_weighted_components():
     """Weighted form: (Σ_k w_k num_k)² / (Σ_k w_k² var_k)."""
-    from crforest._splits import (
+    from comprisk._splits import (
         _logrank_components_std,
         bin_times,
         cause_specific_log_rank_statistic,
@@ -235,7 +235,7 @@ def test_cause_specific_log_rank_weighted_pools_weighted_components():
 def test_find_best_split_logrank_single_cause_respects_cause_param():
     """With cause=1, the only event type that matters is cause-1; cause-2 events
     are treated as censored."""
-    from crforest._splits import find_best_split
+    from comprisk._splits import find_best_split
 
     rng = np.random.default_rng(0)
     n = 40

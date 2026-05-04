@@ -1,10 +1,10 @@
-# λ.exp9c — rfSRC ntime sweep (apples-to-apples vs crforest split_ntime).
+# λ.exp9c — rfSRC ntime sweep (apples-to-apples vs comprisk split_ntime).
 #
-# crforest's split_ntime constrains the time-grid for split-search; rfSRC has
+# comprisk's split_ntime constrains the time-grid for split-search; rfSRC has
 # `ntime` but unclear whether it affects split-search or only prediction grid.
 # This sweep tells us empirically: if rfSRC's wall drops with smaller ntime,
 # its split-search uses the grid; otherwise ntime is prediction-only and
-# crforest's split_ntime IS a real algorithmic innovation.
+# comprisk's split_ntime IS a real algorithmic innovation.
 #
 # Sweep:
 #   ntime ∈ {NULL (default = all unique event times), 50, 20, 10}
@@ -14,7 +14,7 @@
 # Output: /tmp/lambda_exp9c_rfsrc_ntime.parquet (long format) + per-cell
 # wall + native-err c-index dump.
 #
-# Run: ssh win 'cd ~/crforest && \
+# Run: ssh win 'cd ~/comprisk && \
 #        Rscript validation/spikes/lambda/exp9c_rfsrc_ntime_sweep.R \
 #        2>&1 | tee /tmp/lambda_exp9c.log'
 

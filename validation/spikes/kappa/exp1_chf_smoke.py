@@ -21,8 +21,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest, concordance_index_cr
-from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+from comprisk import CompetingRiskForest, concordance_index_cr
+from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
 CSV_PATH = Path.home() / "Downloads" / "filtered_data_2012.csv"
 

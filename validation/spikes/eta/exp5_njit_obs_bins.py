@@ -45,7 +45,7 @@ def _print(msg: str, fp) -> None:
 
 
 def _fit_once() -> float:
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     X, t, e = load(N, SEED)
     forest = CompetingRiskForest(
@@ -64,7 +64,7 @@ def _fit_once() -> float:
 
 
 def _warmup() -> None:
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     X, t, e = load(N, SEED)
     CompetingRiskForest(
@@ -95,7 +95,7 @@ def main() -> None:
     _print(f"[exp5] BASELINE wall = {base_wall:6.2f}s", fp)
 
     # Patched
-    import crforest._hist_splits as hs
+    import comprisk._hist_splits as hs
 
     orig = hs._observed_bins_sorted_ascending
     hs._observed_bins_sorted_ascending = _observed_bins_njit

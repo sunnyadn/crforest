@@ -85,10 +85,10 @@ def test_run_dataset_returns_seed_results(tmp_path: Path, monkeypatch):
     assert seeds == [0, 1]
     for r in results:
         assert r.dataset == "toy"
-        assert 0.0 <= r.c_crforest <= 1.0
+        assert 0.0 <= r.c_comprisk <= 1.0
         assert 0.0 <= r.c_rfsrc <= 1.0
         assert np.isfinite(r.delta_c)
-        assert abs(r.delta_c - (r.c_crforest - r.c_rfsrc)) < 1e-12
+        assert abs(r.delta_c - (r.c_comprisk - r.c_rfsrc)) < 1e-12
 
 
 def test_run_dataset_parallel_matches_serial(tmp_path: Path, monkeypatch):
@@ -109,5 +109,5 @@ def test_run_dataset_parallel_matches_serial(tmp_path: Path, monkeypatch):
     serial_map = {r.seed: r for r in serial}
     parallel_map = {r.seed: r for r in parallel}
     for seed in [0, 1]:
-        assert serial_map[seed].c_crforest == pytest.approx(parallel_map[seed].c_crforest)
+        assert serial_map[seed].c_comprisk == pytest.approx(parallel_map[seed].c_comprisk)
         assert serial_map[seed].c_rfsrc == pytest.approx(parallel_map[seed].c_rfsrc)

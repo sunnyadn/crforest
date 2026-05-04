@@ -7,7 +7,7 @@ libs and produces two pieces of evidence about the root split:
   1. ``per-bin stat profile`` -- for the winning feature at the root,
      dump the full per-bin logrank-z vector from each lib. Reports
      top-K bins in each lib and the near-tie spread.
-  2. ``same-partition alignment`` -- map crforest's 256-quantile bin
+  2. ``same-partition alignment`` -- map comprisk's 256-quantile bin
      boundaries to left-size (count of samples sent left) and match
      against rfSRC's sorted-observation boundaries (where obs_j =
      left-size directly). Bins with equal left-size evaluate the
@@ -37,8 +37,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
-from crforest._binning import apply_bins
+from comprisk import CompetingRiskForest
+from comprisk._binning import apply_bins
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -50,7 +50,7 @@ FEAT_RE_RF = re.compile(r"^feat_stat_CR tree=\d+ a=(\d+) b=(\d+) c=([-\d.eE+]+)"
 BIN_STAT_RE_RF = re.compile(r"^bin_stat_CR tree=\d+ a=(\d+) b=(\d+) c=([-\d.eE+]+)")
 
 
-def _crforest_per_bin_stats(
+def _comprisk_per_bin_stats(
     X_binned_col: np.ndarray,
     t_idx: np.ndarray,
     event: np.ndarray,
@@ -135,7 +135,7 @@ def _crforest_per_bin_stats(
 
 def _root_feat_stats(path: Path, *, rfsrc_fmt: bool) -> list[tuple[int, int, float]]:
     """Return the root node's feat_stat_CR events as (feat_1b, bin, z_stat).
-    crforest's stat is num^2/var; converted to z-scale for parity with rfSRC."""
+    comprisk's stat is num^2/var; converted to z-scale for parity with rfSRC."""
     node_re = NODE_RE_RF if rfsrc_fmt else NODE_RE_CR
     feat_re = FEAT_RE_RF if rfsrc_fmt else FEAT_RE_CR
     root: list[tuple[int, int, float]] = []
@@ -189,7 +189,7 @@ def run(dataset: str, seed: int) -> None:
 
     tmpdir = Path("/tmp/rank_flip_out")
     tmpdir.mkdir(exist_ok=True)
-    cr_trace = tmpdir / "crforest.trace"
+    cr_trace = tmpdir / "comprisk.trace"
     rf_trace = tmpdir / "rfsrc.trace"
     cr_trace.unlink(missing_ok=True)
     rf_trace.unlink(missing_ok=True)
@@ -244,7 +244,7 @@ def run(dataset: str, seed: int) -> None:
     winner_feat_0b = winner_feat_1b - 1
 
     print(
-        f"  root winners: crforest feat={cr_winner[0]} z={cr_winner[2]:.6f}  "
+        f"  root winners: comprisk feat={cr_winner[0]} z={cr_winner[2]:.6f}  "
         f"rfSRC feat={rf_winner[0]} z={rf_winner[2]:.6f}",
         flush=True,
     )
@@ -271,7 +271,7 @@ def run(dataset: str, seed: int) -> None:
         0,
         len(forest.time_grid_) - 1,
     ).astype(np.int64)
-    cr_bins_z = _crforest_per_bin_stats(
+    cr_bins_z = _comprisk_per_bin_stats(
         X_binned_full[:, winner_feat_0b].astype(np.int64),
         t_idx,
         event[train_idx].astype(np.int64),
@@ -289,7 +289,7 @@ def run(dataset: str, seed: int) -> None:
     print(f"\n  PER-BIN EVIDENCE at root for winner feat={winner_feat_1b}:", flush=True)
     cr_top = cr_valid[0][1] if cr_valid else 0.0
     rf_top = rf_winner_bins[0][1] if rf_winner_bins else 0.0
-    print(f"    crforest top-5 bins (candidates={len(cr_valid)}):", flush=True)
+    print(f"    comprisk top-5 bins (candidates={len(cr_valid)}):", flush=True)
     for b, s in cr_valid[:5]:
         print(
             f"      bin={b:3d} z={s:.6f} rel_to_top={(cr_top - s) / max(cr_top, 1e-12):.6f}",
@@ -305,13 +305,13 @@ def run(dataset: str, seed: int) -> None:
         cr_near = sum(1 for _b, s in cr_valid if (cr_top - s) / max(cr_top, 1e-12) < eps)
         rf_near = sum(1 for _j, s in rf_winner_bins if (rf_top - s) / max(rf_top, 1e-12) < eps)
         print(
-            f"    within {eps * 100:.1f}% of top: crforest {cr_near}/{len(cr_valid)}, "
+            f"    within {eps * 100:.1f}% of top: comprisk {cr_near}/{len(cr_valid)}, "
             f"rfSRC {rf_near}/{len(rf_winner_bins)}",
             flush=True,
         )
 
     # --- Same-partition alignment ---
-    # Map each crforest quantile bin to left-size = count(X_binned <= b).
+    # Map each comprisk quantile bin to left-size = count(X_binned <= b).
     # rfSRC obs_j = left-size directly. Match by equal left-size so both
     # libs evaluate the IDENTICAL partition, isolating pure numerical noise.
     x_col = X_binned_full[:, winner_feat_0b].astype(np.int64)
@@ -336,7 +336,7 @@ def run(dataset: str, seed: int) -> None:
     cr_pick_left = int(cr_bin_to_left[cr_winner[1]])
     rf_pick_left = int(rf_winner[1])
     print(
-        f"    crforest chose: bin={cr_winner[1]}, left-size={cr_pick_left}, "
+        f"    comprisk chose: bin={cr_winner[1]}, left-size={cr_pick_left}, "
         f"stat_cr={cr_winner[2]:.6f}, "
         f"stat_rf(@same-partition)={rf_by_left.get(cr_pick_left, float('nan')):.6f}",
         flush=True,

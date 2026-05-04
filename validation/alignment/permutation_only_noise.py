@@ -1,4 +1,4 @@
-"""Isolate permutation-RNG-only noise floor for crforest OOB VIMP on hd.
+"""Isolate permutation-RNG-only noise floor for comprisk OOB VIMP on hd.
 
 Fix the forest fit, vary ONLY compute_importance(random_state=k). Compute
 pairwise Spearman between resulting VIMPs. Establishes the per-permutation
@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
 

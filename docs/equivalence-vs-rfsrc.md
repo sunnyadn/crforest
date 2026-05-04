@@ -1,6 +1,6 @@
 # Equivalence vs randomForestSRC
 
-This document characterizes how closely crforest matches randomForestSRC
+This document characterizes how closely comprisk matches randomForestSRC
 (rfSRC) on competing-risks tasks, why any residual gap exists, and what
 commands reproduce the evidence. It is the single source of truth for
 the academic-defensibility narrative of the library.
@@ -8,7 +8,7 @@ the academic-defensibility narrative of the library.
 ## TL;DR
 
 - **Algorithmic equivalence (Tier 1)**: with every source of randomness
-  removed from both libraries, crforest and rfSRC produce **bit-identical**
+  removed from both libraries, comprisk and rfSRC produce **bit-identical**
   competing-risks CIF predictions on the `hd` dataset.
 - **Production statistical equivalence (Tier 3)**: across all four gate
   datasets (`pbc`, `follic`, `hd`, `synthetic`), the cross-library
@@ -59,7 +59,7 @@ only 433 training samples, many near-tied log-rank statistics whose
 tiebreak rule differs marginally between libs).
 
 Synthetic's large gap at ntree=1 has been **causally attributed via
-intervention** to **discretization-grid mismatch between crforest's
+intervention** to **discretization-grid mismatch between comprisk's
 256-quantile feature grid and rfSRC's sorted-observation candidate
 set**. Evidence flow (measure → localize → intervene):
 
@@ -71,15 +71,15 @@ set**. Evidence flow (measure → localize → intervene):
    bit-identical on hd (binary/ordinal features → integer-only
    partition arithmetic) vs up to 49% on synthetic (continuous
    features → float cumulative-sum accumulation order differs
-   between crforest's histogram-bin cumsum and rfSRC's sort-based
+   between comprisk's histogram-bin cumsum and rfSRC's sort-based
    sequential update).
 3. **Ruled out** earlier candidates: time-grid truncation
    (`time_grid=2000` lossless makes gap worse, 0.78 vs 0.56),
    stopping-rule mismatch as sole cause (`min_samples_split ∈ {6..400}`
    sweep produces non-monotonic [0.46, 0.82] with minimum at
-   crforest-shallower-than-rfSRC).
+   comprisk-shallower-than-rfSRC).
 4. **Same-partition alignment directly measured** (closes the
-  attribution): for each crforest quantile-bin boundary, map to the
+  attribution): for each comprisk quantile-bin boundary, map to the
   left-size it produces (count of training samples sent left);
   match against rfSRC's sorted-observation boundaries (where
   obs_j = left-size directly). On matching left-sizes the two
@@ -101,11 +101,11 @@ set**. Evidence flow (measure → localize → intervene):
     partition (both libs pick the same left-size = 375/544/491/550).
     These were previously mis-flagged as "split-bin drift at root"
     by the coarse diagnostic that compared integer bin-indices
-    (crforest quantile-bin vs rfSRC sorted-observation) instead of
+    (comprisk quantile-bin vs rfSRC sorted-observation) instead of
     the partition they induce.
   - **6/10 seeds (1, 2, 4, 5, 8, 9): rfSRC's best partition has a
-    left-size NOT IN crforest's 256-quantile grid at all**.
-    crforest picks the nearest available left-size (off by 1-3
+    left-size NOT IN comprisk's 256-quantile grid at all**.
+    comprisk picks the nearest available left-size (off by 1-3
     samples) and the trees diverge from there. This is
     **discretization mismatch**, not numerical noise.
 
@@ -133,9 +133,9 @@ set**. Evidence flow (measure → localize → intervene):
 
   Directly observed distribution of first-divergence mechanisms:
   - **8/9 (~89%): grid_mismatch** (rfSRC's chosen left-size is not
-    in crforest's 256-quantile grid for that feature).
+    in comprisk's 256-quantile grid for that feature).
   - **1/9 (~11%): feature_flip** at depth 1 on seed 3 (depth 1,
-    node size 375: crforest picks feature 3, rfSRC picks feature 1).
+    node size 375: comprisk picks feature 3, rfSRC picks feature 1).
   - **Seed 10** stays in lockstep for 9+ DFS nodes then the trees
     structurally diverge via stopping-rule / leaf classification
     (one lib calls a node a leaf while the other keeps splitting)
@@ -154,7 +154,7 @@ set**. Evidence flow (measure → localize → intervene):
   ([`validation/alignment/grid_mismatch_falsification.py`](../validation/alignment/grid_mismatch_falsification.py)):
   re-ran synthetic F-cell (ntree=1, bootstrap=F, nsplit=0, mtry=p,
   min_samples_split=30 / rfSRC nodesize=15, split_ntime=None,
-  rfSRC ntime=0, 10 seeds) with crforest in ``mode="reference"``
+  rfSRC ntime=0, 10 seeds) with comprisk in ``mode="reference"``
   instead of the default ``mode="default"``. Reference mode
   evaluates splits at every midpoint between sorted unique values
   — the same candidate set rfSRC uses — so turns off the
@@ -285,11 +285,11 @@ fractions of a percentage point.
 
 The equivalence audit also reports time-independent risk-ranking
 agreement via the cause-specific concordance index
-(`crforest.metrics.concordance_index_cr`) computed on each seed's
+(`comprisk.metrics.concordance_index_cr`) computed on each seed's
 test fold (risk = CIF at the last reference-grid time). 20 seeds,
 paired (0,1), (2,3), …, 9 within-lib pairs per library:
 
-| dataset    | mean C (crforest) | mean C (rfSRC) | cross max ΔC | within cr max ΔC | within rf max ΔC | noise-floor |
+| dataset    | mean C (comprisk) | mean C (rfSRC) | cross max ΔC | within cr max ΔC | within rf max ΔC | noise-floor |
 |------------|-------------------|----------------|--------------|-------------------|-------------------|-------------|
 | pbc        | 0.763             | 0.756          | 0.082        | 0.257             | 0.248             | PASS (3.1× smaller) |
 | follic     | 0.574             | 0.573          | 0.025        | 0.131             | 0.095             | PASS (5.2×) |
@@ -339,7 +339,7 @@ equivalent (Tier 1)?
   subsampling with independent RNG streams is the single biggest
   production-level contributor.
 - `C → D` (exhaustive candidates): gap rises slightly — at exhaustive
-  nsplit, the per-tree split_ntime=50 coarsening in crforest's log-rank
+  nsplit, the per-tree split_ntime=50 coarsening in comprisk's log-rank
   evaluation emerges as a visible bias.
 - `D → E → F`: the fully-deterministic single-tree limit bit-matches
   when split_ntime=None. G confirms rfSRC ntime=150 is irrelevant on
@@ -348,7 +348,7 @@ equivalent (Tier 1)?
 **Definitive decomposition — the Z cell** (see
 [`validation/alignment/z_cell_spike.py`](../validation/alignment/z_cell_spike.py)):
 use rfSRC's `bootstrap="by.user"` with an externally-supplied in-bag
-matrix built from crforest's numpy RNG, plus `mtry=p`, `nsplit=0`,
+matrix built from comprisk's numpy RNG, plus `mtry=p`, `nsplit=0`,
 `ntree=500`, `split_ntime=None`, and rfSRC `ntime=0`. This removes
 every RNG-driven choice (bootstrap is aligned, mtry/nsplit are
 removed) while keeping the 500-tree ensemble.
@@ -364,19 +364,19 @@ Interpretation of the components:
    production gap. Each library draws bootstrap samples, mtry feature
    subsets, and nsplit candidate subsets from its own RNG stream.
    rfSRC uses a custom `ran1` LCG (from Numerical Recipes) with four
-   per-tree streams; crforest uses numpy Mersenne-Twister. Even with
+   per-tree streams; comprisk uses numpy Mersenne-Twister. Even with
    matching "seed" integers, the resulting random choices differ.
 2. **Non-RNG residual** ≈ 0.005 (hd) / 0.013 (follic). Persists after
    every RNG source is removed or aligned. Dominant source,
    **directly measured** via the rank-flip diagnostic at the root
    on synthetic (10 seeds), matching partitions by left-size so the
    two libs are compared on the *same* split of samples:
-   - **Discretization-grid mismatch dominates**: crforest evaluates
+   - **Discretization-grid mismatch dominates**: comprisk evaluates
      ~255 candidate bin-boundaries (256-quantile grid) while rfSRC
      evaluates up to n-1 observation-level boundaries (~799 on
      synthetic). In 6/10 seeds (1, 2, 4, 5, 8, 9) rfSRC's best
-     partition has a left-size that is not in crforest's quantile
-     grid at all; crforest picks the nearest available (off by 1-3
+     partition has a left-size that is not in comprisk's quantile
+     grid at all; comprisk picks the nearest available (off by 1-3
      samples). The remaining 4/10 seeds have identical root
      partitions (both libs pick the same left-size); the earlier
      flag of "split-bin drift" on these was an artifact of
@@ -408,7 +408,7 @@ limits** under independent RNG.
 
 **Bootstrap alignment alone** is insufficient
 ([`bootstrap_aligned_spike.py`](../validation/alignment/bootstrap_aligned_spike.py)):
-feeding rfSRC the identical per-tree in-bag matrix that crforest used
+feeding rfSRC the identical per-tree in-bag matrix that comprisk used
 closes only `~1.5%` of the hd gap. Bootstrap-RNG independence is a
 red herring at production config; mtry and nsplit independence
 dominate.
@@ -420,7 +420,7 @@ dominate.
   seed-to-seed variance": this is met on all four gate datasets at
   production defaults. No configuration change required.
 - **If you need a scalar p95 cap** (e.g., the legacy `0.05` heuristic):
-  set `max_features=p` in crforest and `mtry=p` in rfSRC. This
+  set `max_features=p` in comprisk and `mtry=p` in rfSRC. This
   removes the dominant contributor (mtry RNG independence) and brings
   all four datasets below `0.03`. Cost: mtry subsampling is disabled,
   so ensemble regularization is weaker; this is a research-mode
@@ -493,14 +493,14 @@ evidence — each one independent, none relying on elimination:
 | 7 | **Per-tree permuted mortality (same canonical π through both libs)** | median Spearman = 1.000 | [`per_tree_permuted_mortality.py`](../validation/alignment/per_tree_permuted_mortality.py) |
 | 8 | Per-tree mortality across 6 seeds (1, 2, 3, 5, 7, 10) | median Spearman = 1.000 each; 78-95% trees bit-identical | [`per_tree_seeds_sweep.py`](../validation/alignment/per_tree_seeds_sweep.py) |
 | 9 | Within-lib seed-to-seed pairwise Spearman | pbc/follic/hd/synthetic all ≥0.58 (median) | [`vimp_within_stability.py`](../validation/alignment/vimp_within_stability.py) |
-| 10 | ntime grid match (rfSRC `time.interest` vs crforest `unique_times_`) | bit-identical 133-point grid on hd | [`_ntime_grid_check.py`](../validation/alignment/_ntime_grid_check.py) |
+| 10 | ntime grid match (rfSRC `time.interest` vs comprisk `unique_times_`) | bit-identical 133-point grid on hd | [`_ntime_grid_check.py`](../validation/alignment/_ntime_grid_check.py) |
 | 11 | Permutation-only noise floor at fixed forest | median Spearman +0.83 (45 pairs from 10 perm seeds) | [`permutation_only_noise.py`](../validation/alignment/permutation_only_noise.py) |
-| 12 | **Replay rfSRC's actual per-tree permutations through crforest's trees** | **Pearson = 1.0000, mean\|Δ\| < 0.001 C-index units; Spearman ≥ 0.94 (run-to-run float noise from rfSRC OpenMP atomic accumulations flips ties at sub-1e-3 vimp magnitudes)** | [`vimp_perm_replay.py`](../validation/alignment/vimp_perm_replay.py) + `_rfsrc_patches/importancePerm.c.patch` |
+| 12 | **Replay rfSRC's actual per-tree permutations through comprisk's trees** | **Pearson = 1.0000, mean\|Δ\| < 0.001 C-index units; Spearman ≥ 0.94 (run-to-run float noise from rfSRC OpenMP atomic accumulations flips ties at sub-1e-3 vimp magnitudes)** | [`vimp_perm_replay.py`](../validation/alignment/vimp_perm_replay.py) + `_rfsrc_patches/importancePerm.c.patch` |
 
   Axis 12 is decisive. We instrumented `rfSRC::importancePerm.c` to emit
   the per-(tree, feature, OOB sample) permutation each tree actually
-  used, fed those permutations through crforest's identical trees, and
-  recomputed VIMP via the same Harrell-subset C-index that crforest's
+  used, fed those permutations through comprisk's identical trees, and
+  recomputed VIMP via the same Harrell-subset C-index that comprisk's
   OOB VIMP scoring used at that point (we have since switched scoring
   to Uno IPCW; see "Uno IPCW closure" section). The replay
   reproduces rfSRC's reported `$importance` per-feature per-cause at
@@ -512,7 +512,7 @@ evidence — each one independent, none relying on elimination:
 
 ##### Why the cross-lib VIMP Spearman against rfSRC default is moderate
 
-  Numerical comparison of crforest VIMP rankings against rfSRC's default
+  Numerical comparison of comprisk VIMP rankings against rfSRC's default
   `vimp(importance="permute")` at ntree=100, paired bootstrap, on hd
   (cause 1, median across 10 seeds): Spearman ≈ −0.37. **Total gap of
   ~1.20 from the within-lib perm-only noise floor (+0.83) is fully
@@ -520,7 +520,7 @@ evidence — each one independent, none relying on elimination:
 
   | Mechanism | Cross-lib Spearman shift | Direct evidence |
   |-----------|--------------------------|-----------------|
-  | rfSRC default `use.uno=TRUE` (Uno IPCW C-index) vs crforest's Harrell C | **0.74** | hd cross-lib Spearman moves from −0.37 (use.uno=TRUE) to +0.37 (use.uno=FALSE) |
+  | rfSRC default `use.uno=TRUE` (Uno IPCW C-index) vs comprisk's Harrell C | **0.74** | hd cross-lib Spearman moves from −0.37 (use.uno=TRUE) to +0.37 (use.uno=FALSE) |
   | Fit-level: 5-22% of trees in `equivalence='rfsrc'` preset are not bit-identical between libs at production ntree | **~0.23** | per-seed `frac_trees_bit_identical` correlates with cross-lib Spearman at Pearson +0.82, Spearman +0.74 across 6 seeds |
   | Permutation RNG choice (each lib uses its own RNG stream) | residual | replay test (axis 12) shows Spearman=1.0 when permutations are aligned; cross-lib at independent RNGs reverts to within-lib perm-only noise distribution (+0.83 median) |
 
@@ -532,7 +532,7 @@ evidence — each one independent, none relying on elimination:
 
 ##### How to use this for downstream defense
 
-  - "**crforest VIMP is correct.**" Three independent direct-evidence
+  - "**comprisk VIMP is correct.**" Three independent direct-evidence
     paths (axes 2, 3, 12) prove the implementation matches both a
     numerically-explicit Python reference, an independent ground truth
     on synthetic data, and rfSRC's algorithm modulo RNG choice.
@@ -542,13 +542,13 @@ evidence — each one independent, none relying on elimination:
     no unexplained residual. Each component is directly measured, not
     inferred by elimination.
 
-  - "**For exact rfSRC numerical reproduction, that's not crforest's
+  - "**For exact rfSRC numerical reproduction, that's not comprisk's
     goal.**" Two valid OOB Breiman permutation VIMP implementations
     using different RNG streams will not produce identical numerics on
-    real data. crforest is a peer implementation, not a wrapper.
+    real data. comprisk is a peer implementation, not a wrapper.
 
   - "**If a reviewer requires `use.uno=TRUE` semantics**" — implemented
-    in `crforest.metrics.compute_uno_weights` + `concordance_index_uno_cr`
+    in `comprisk.metrics.compute_uno_weights` + `concordance_index_uno_cr`
     (default scoring for `forest.compute_importance()` since 2026-04-25).
     Numerical match against rfSRC's `use.uno=TRUE` is **partially**
     achieved: the C-index path matches bit-equivalently when given
@@ -560,7 +560,7 @@ evidence — each one independent, none relying on elimination:
 
 ##### Uno IPCW closure (2026-04-25)
 
-  crforest now ships `metrics.compute_uno_weights` +
+  comprisk now ships `metrics.compute_uno_weights` +
   `metrics.concordance_index_uno_cr` (faithful port of rfSRC's
   `get.uno.weights.train` + `getCRConcordanceIndexIPCW_Fenwick`), and
   `forest.compute_importance()` uses Uno IPCW C-index for OOB scoring
@@ -570,7 +570,7 @@ evidence — each one independent, none relying on elimination:
   **C-index implementation matches rfSRC.** Per-call alignment via
   [`uno_cindex_check.py`](../validation/alignment/uno_cindex_check.py)
   (drives rfSRC under `RFSRC_TRACE_UNO=<path>`, parses the trace, feeds
-  rfSRC's exported per-call weights into crforest's `concordance_index_uno_cr`,
+  rfSRC's exported per-call weights into comprisk's `concordance_index_uno_cr`,
   asserts |Δc| < 1e-5 against rfSRC's `numerW/denomW`):
 
   | dataset    | max \|Δc\|   | result |
@@ -601,9 +601,9 @@ evidence — each one independent, none relying on elimination:
   divergence is the dominant remaining source of disagreement. Full
   decomposition is tracked for a future revision.
 
-  **Downstream framing**: crforest implements Uno IPCW C-index per the
+  **Downstream framing**: comprisk implements Uno IPCW C-index per the
   textbook formulation (Uno 2011) with matching algorithm at the
-  C-index calculation level. crforest is a peer implementation, not
+  C-index calculation level. comprisk is a peer implementation, not
   a rfSRC wrapper; for users who require exact numerical reproduction
   of rfSRC's `use.uno=TRUE` output, run rfSRC directly.
 
@@ -641,13 +641,13 @@ evidence — each one independent, none relying on elimination:
 
 #### Stopping-rule sensitivity of Phase 1c
 
-Phase 1c's default config has crforest `min_samples_split=30` and rfSRC
+Phase 1c's default config has comprisk `min_samples_split=30` and rfSRC
 `nodesize=15` (both defaults in the production gate). Those are
 numerically different but produce similarly-sized trees empirically —
 the two libraries' stopping-rule semantics aren't equivalent under
 equal numerical values.
 
-Explicit sensitivity sweep (`--match-stopping`: crforest
+Explicit sensitivity sweep (`--match-stopping`: comprisk
 `min_samples_split=15, min_samples_leaf=1` + rfSRC `nodesize=15`,
 10 seeds each):
 
@@ -660,9 +660,9 @@ Explicit sensitivity sweep (`--match-stopping`: crforest
 
 All 4 datasets got **worse** under "matched" stopping. This
 empirical observation does NOT prove a clean mechanism. In particular,
-a separate ntree=1 sweep of crforest `min_samples_split ∈ {6, 15, 30,
+a separate ntree=1 sweep of comprisk `min_samples_split ∈ {6, 15, 30,
 50, 100, 200, 400}` on synthetic found `cross_p95_cif` moves in a
-[0.46, 0.82] band non-monotonically, with minimum at crforest-
+[0.46, 0.82] band non-monotonically, with minimum at comprisk-
 shallower-than-rfSRC — not at size-matched trees. So the story is
 not simply "matching tree sizes aligns the libraries".
 
@@ -680,12 +680,12 @@ sets them.
   when you need this alignment.
 
   **synthetic caveat**: on datasets with more than 200 unique event
-  times, crforest's `time_grid=200` output-grid cap becomes the
+  times, comprisk's `time_grid=200` output-grid cap becomes the
   dominant residual source (rfSRC with `ntime=0` keeps all ~1500
   events). Phase 1c still passes noise-floor comfortably on
   synthetic (`p95 = 0.031` vs within-lib ≈ 0.47), but the RNG
   alignment does NOT close this output-grid gap. To close it, set
-  `time_grid=None` (or a larger value) on crforest. Not currently
+  `time_grid=None` (or a larger value) on comprisk. Not currently
   the default because the 200-cap keeps leaf memory bounded on large
   datasets; future work may auto-scale this.
 
@@ -727,7 +727,7 @@ R 4.5.2 / randomForestSRC 3.6.2`.
 ## Glossary
 
 - `cross_p95_<metric>`: median over seeds of the 95th-percentile of
-  per-sample |crforest − rfSRC| for that metric (CIF, risk, IBS).
+  per-sample |comprisk − rfSRC| for that metric (CIF, risk, IBS).
 - `within_<lib>_p95_<metric>`: 95th-percentile of per-sample
   |seed_a − seed_b| for paired seeds `(0,1), (2,3), …` within library
   `lib`. Larger of `cr` / `rf` is the noise floor.

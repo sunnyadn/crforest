@@ -1,14 +1,14 @@
-"""crforest: Competing risks random survival forests for Python."""
+"""comprisk: Python toolkit for competing risks (forest today; regression in v0.4)."""
 
-from crforest._sklearn_compat import Surv
-from crforest.forest import CompetingRiskForest
-from crforest.metrics import (
+from comprisk._sklearn_compat import Surv
+from comprisk.forest import CompetingRiskForest
+from comprisk.metrics import (
     compute_uno_weights,
     concordance_index_cr,
     concordance_index_uno_cr,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "CompetingRiskForest",

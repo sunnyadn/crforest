@@ -33,7 +33,7 @@ def test_histogram_kernel_matches_numpy_reference():
             expected_atrisk[0, f, b, t] += 1
 
     # Kernel under test.
-    from crforest._gpu_kernels import histogram_kernel_per_level
+    from comprisk._gpu_kernels import histogram_kernel_per_level
 
     Xb_d = cp.asarray(X_binned)
     t_d = cp.asarray(t_idx)
@@ -69,11 +69,11 @@ def test_best_split_kernel_matches_cpu_reference(splitrule_code):
     kernel (find_best_split_hist_batched) on a tiny fixture."""
     import cupy as cp
 
-    from crforest._gpu_kernels import (
+    from comprisk._gpu_kernels import (
         best_split_kernel_per_node,
         histogram_kernel_per_level,
     )
-    from crforest._hist_splits import find_best_split_hist_batched
+    from comprisk._hist_splits import find_best_split_hist_batched
 
     rng = np.random.default_rng(1)
     n = 200
@@ -151,7 +151,7 @@ def test_leafify_kernel_matches_cpu_helper():
     sample_perm permutation."""
     import cupy as cp
 
-    from crforest._gpu_kernels import (
+    from comprisk._gpu_kernels import (
         _accumulate_leaf_cpu,
         leafify_kernel_per_level,
     )
@@ -215,8 +215,8 @@ def test_aalen_johansen_batched_matches_cpu_helper():
     profiles including zero-at-risk tail bins."""
     import cupy as cp
 
-    from crforest._estimators import aalen_johansen_from_counts
-    from crforest._gpu_kernels import aalen_johansen_from_counts_batched_gpu
+    from comprisk._estimators import aalen_johansen_from_counts
+    from comprisk._gpu_kernels import aalen_johansen_from_counts_batched_gpu
 
     rng = np.random.default_rng(11)
     n_leaves = 20
@@ -262,7 +262,7 @@ def test_partition_kernel_matches_cpu_helper():
     order-invariant given equal seeds)."""
     import cupy as cp
 
-    from crforest._gpu_kernels import (
+    from comprisk._gpu_kernels import (
         _partition_inplace,
         partition_kernel_per_level,
     )
@@ -341,7 +341,7 @@ def test_best_split_kernel_rejects_oversized_inputs():
     """Runtime guards reject n_causes / n_time_bins beyond the device-helper buffer caps."""
     import cupy as cp
 
-    from crforest._gpu_kernels import (
+    from comprisk._gpu_kernels import (
         MAX_GPU_CAUSES,
         MAX_GPU_TIME_BINS,
         best_split_kernel_per_node,

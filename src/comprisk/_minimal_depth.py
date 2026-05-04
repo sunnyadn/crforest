@@ -57,9 +57,9 @@ def _walk_min_depth(tree, n_features: int) -> WalkResult:
       count of internal (non-leaf) nodes at each depth.
     - ``max_depth`` : int; depth of the deepest node (leaf or internal).
     """
-    from crforest._hist_tree import HistTreeNode
-    from crforest._tree import RefTreeNode
-    from crforest._tree_flat import FlatTree
+    from comprisk._hist_tree import HistTreeNode
+    from comprisk._tree import RefTreeNode
+    from comprisk._tree_flat import FlatTree
 
     if isinstance(tree, FlatTree):
         return _walk_flat(tree, n_features)

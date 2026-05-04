@@ -5,7 +5,7 @@ import warnings
 import numpy as np
 import pytest
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 
 def _toy(n=200, p=4, seed=0):

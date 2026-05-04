@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from crforest._estimators import aalen_johansen, aalen_johansen_from_counts
-from crforest._tree import RefTreeNode, build_tree, predict_tree
+from comprisk._estimators import aalen_johansen, aalen_johansen_from_counts
+from comprisk._tree import RefTreeNode, build_tree, predict_tree
 
 
 def _toy_separating_dataset():
@@ -192,7 +192,7 @@ def test_predict_tree_rejects_non_2d_input():
 def test_build_tree_accepts_splitrule_logrank():
     import numpy as np
 
-    from crforest._tree import build_tree
+    from comprisk._tree import build_tree
 
     rng = np.random.default_rng(0)
     n = 40
@@ -219,8 +219,8 @@ def test_build_tree_accepts_splitrule_logrank():
 
 def test_predict_tree_chf_single_leaf_matches_nelson_aalen_cs():
     """A forced single-leaf tree's CHF equals the root Nelson-Aalen CHF."""
-    from crforest._estimators import nelson_aalen_cs
-    from crforest._tree import build_tree, predict_tree_chf
+    from comprisk._estimators import nelson_aalen_cs
+    from comprisk._tree import build_tree, predict_tree_chf
 
     # 6 samples, 2 features — force a single leaf by making min_samples_split huge
     X = np.array([[0.0, 0.0], [1.0, 1.0], [0.5, 0.5], [0.2, 0.8], [0.8, 0.2], [0.6, 0.4]])
@@ -251,7 +251,7 @@ def test_predict_tree_chf_single_leaf_matches_nelson_aalen_cs():
 
 def test_predict_tree_chf_matches_predict_tree_shape():
     """CHF prediction has the same shape as CIF prediction and is non-negative."""
-    from crforest._tree import build_tree, predict_tree, predict_tree_chf
+    from comprisk._tree import build_tree, predict_tree, predict_tree_chf
 
     rng = np.random.default_rng(0)
     X = rng.uniform(size=(40, 3))

@@ -1,6 +1,6 @@
 """Profile a representative CompetingRiskForest fit under cProfile.
 
-Sprint-1 #1 of the crforest perf plan. Generates synthetic 2-cause Weibull
+Sprint-1 #1 of the comprisk perf plan. Generates synthetic 2-cause Weibull
 data at a wanqi-cr-shaped size (n=60k by p=30 by default), fits the forest
 under cProfile, and dumps both binary pstats and a sorted text report.
 
@@ -9,7 +9,7 @@ Usage
     python -m validation.profile_fit                       # ntree=500 canonical
     python -m validation.profile_fit --ntree 100           # fast iteration pass
     python -m validation.profile_fit --ntree 500 --jobs 1  # serialize for cleaner profile
-    python -m validation.profile_fit --device cuda         # GPU path (requires crforest[gpu])
+    python -m validation.profile_fit --device cuda         # GPU path (requires comprisk[gpu])
     python -m validation.profile_fit --n 20000 --p 20      # smaller smoke
 
 Outputs (under validation/data/):
@@ -74,7 +74,7 @@ def main() -> None:
         "--device",
         choices=("auto", "cpu", "cuda"),
         default="auto",
-        help="compute backend (default: auto -> cpu in v0.1; cuda requires crforest[gpu])",
+        help="compute backend (default: auto -> cpu in v0.1; cuda requires comprisk[gpu])",
     )
     ap.add_argument("--outdir", type=Path, default=Path(__file__).resolve().parent / "data")
     args = ap.parse_args()
@@ -98,7 +98,7 @@ def main() -> None:
 
     # Lazy import so cProfile sees the relevant call stack from `fit`, not from
     # numba JIT cache loading at module import.
-    from crforest import CompetingRiskForest
+    from comprisk import CompetingRiskForest
 
     forest = CompetingRiskForest(
         n_estimators=args.ntree,
@@ -131,7 +131,7 @@ def main() -> None:
     print(f"[profile_fit] pstats -> {pstats_path}")
 
     buf = io.StringIO()
-    buf.write("# crforest profile_fit\n")
+    buf.write("# comprisk profile_fit\n")
     buf.write(f"# tag: {tag}\n")
     buf.write(f"# wall_seconds: {wall:.4f}\n")
     buf.write(f"# n={args.n} p={args.p} ntree={args.ntree} jobs={args.jobs} n_bins={args.n_bins}\n")

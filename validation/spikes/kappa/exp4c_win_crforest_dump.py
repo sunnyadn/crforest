@@ -1,4 +1,4 @@
-"""κ.exp4c — crforest multi-seed × multi-device dump on the win canonical machine.
+"""κ.exp4c — comprisk multi-seed × multi-device dump on the win canonical machine.
 
 Loops 5 seeds × {device='cpu', device='cuda'} for canonical paper bench
 on the win box (i7-14700K, 28 threads, RTX 5070 Ti, 24 GB WSL). Dumps
@@ -9,8 +9,8 @@ Companion to exp4_multiseed_rfsrc.R (rfSRC same machine, rf.cores=16).
 Together these give same-machine wall-time comparison vs cross-machine
 (Mac numbers we already have).
 
-Run: ssh win 'cd ~/crforest && uv run --extra gpu --extra dev python -u
-                validation/spikes/kappa/exp4c_win_crforest_dump.py'
+Run: ssh win 'cd ~/comprisk && uv run --extra gpu --extra dev python -u
+                validation/spikes/kappa/exp4c_win_comprisk_dump.py'
 """
 
 from __future__ import annotations
@@ -21,13 +21,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 TRAIN_IDX = Path("/tmp/chf_2012_train_idx.txt")
 TEST_IDX = Path("/tmp/chf_2012_test_idx.txt")
-OUT_RISKS = Path("/tmp/chf_2012_crforest_win_risks.parquet")
-OUT_WALLS = Path("/tmp/chf_2012_crforest_win_walls.parquet")
+OUT_RISKS = Path("/tmp/chf_2012_comprisk_win_risks.parquet")
+OUT_WALLS = Path("/tmp/chf_2012_comprisk_win_walls.parquet")
 SEEDS = [42, 43, 44, 45, 46]
 DEVICES = ["cpu", "cuda"]
 
@@ -53,7 +53,7 @@ def main() -> None:
         # cuda backend forces n_jobs=1 (single host driver); cpu uses all cores
         n_jobs = 1 if device == "cuda" else -1
         for seed in SEEDS:
-            print(f"\n[crforest] device={device} seed={seed} fitting...", flush=True)
+            print(f"\n[comprisk] device={device} seed={seed} fitting...", flush=True)
             f = CompetingRiskForest(
                 n_estimators=100,
                 n_jobs=n_jobs,
@@ -97,7 +97,7 @@ def main() -> None:
     print(f"\n[dump] {OUT_RISKS} ({len(rows_risk):,} rows)", flush=True)
     print(f"[dump] {OUT_WALLS}", flush=True)
     walls = pd.DataFrame(rows_wall)
-    print("\n[summary] crforest win wall-time:")
+    print("\n[summary] comprisk win wall-time:")
     for device in DEVICES:
         sub = walls[walls["device"] == device]
         print(

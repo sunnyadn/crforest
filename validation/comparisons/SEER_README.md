@@ -1,6 +1,6 @@
 # SEER breast cancer matched-pair benchmark
 
-Cross-dataset external-validity benchmark for crforest. Mirrors the CHF
+Cross-dataset external-validity benchmark for comprisk. Mirrors the CHF
 matched-pair (`n75k_path_b.py`) but on an oncology cohort with cancer-specific
 vs other-cause mortality as the competing risks.
 
@@ -90,7 +90,7 @@ Final cohort: ~238k cases × 17 features. Status distribution:
 
 ```bash
 PYTHONUNBUFFERED=1 python -u validation/comparisons/seer_path_b.py \
-    --seeds 42,43,44 --cells rfsrc_on,crforest
+    --seeds 42,43,44 --cells rfsrc_on,comprisk
 ```
 
 Output: `/tmp/seer_path_b.parquet` plus a fingerprint of the run config.
@@ -102,10 +102,10 @@ Real EHR-shaped data, breast cancer cohort. Run on HPC fc7
 
 | Lib       | Wall (s)        | RSS (GB)        | C₁     | C₂     |
 |-----------|-----------------|-----------------|--------|--------|
-| crforest  | 7.02 ± 0.31     | 8.83 ± 0.11     | 0.8652 | 0.8370 |
+| comprisk  | 7.02 ± 0.31     | 8.83 ± 0.11     | 0.8652 | 0.8370 |
 | rfSRC     | 81.56 ± 3.40    | 55.17 ± 0.17    | 0.8450 | 0.8090 |
 
-Speedup: **11.6×** wall, **6.25×** memory; crforest also wins on accuracy
+Speedup: **11.6×** wall, **6.25×** memory; comprisk also wins on accuracy
 (+0.020 C₁, +0.028 C₂).
 
 Cross-dataset comparison with the CHF matched-pair: CHF (n=75k, p=58)
@@ -118,8 +118,8 @@ benchmarks at p=30 produce inflated 200× ratios that don't generalize.
 
 **WSL2 / 23 GB visible RAM:** rfSRC OOMs at full SEER cohort scale
 (needs ~55 GB at n=238k). Use `--subsample 75000` for the matched-pair;
-crforest itself runs cleanly at full N (~9 s, 8.7 GB RSS) and reports
-the same C-index numbers — that pair (full-N crforest + 75k matched) is
+comprisk itself runs cleanly at full N (~9 s, 8.7 GB RSS) and reports
+the same C-index numbers — that pair (full-N comprisk + 75k matched) is
 itself a reportable headline.
 
 **HPC clusters without C++20 compilers:** the R `arrow` package will

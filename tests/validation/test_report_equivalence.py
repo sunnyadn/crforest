@@ -50,11 +50,11 @@ def _fixture_input():
     }
     tree_stats = {
         "follic": {
-            "crforest": {"mean_leaves": 42.1, "mean_depth": 6.2, "leaf_p5": 1.0, "leaf_p95": 20.0},
+            "comprisk": {"mean_leaves": 42.1, "mean_depth": 6.2, "leaf_p5": 1.0, "leaf_p95": 20.0},
             "rfSRC": {"mean_leaves": 40.5, "mean_depth": None, "leaf_p5": 1.0, "leaf_p95": 19.0},
         },
         "pbc": {
-            "crforest": {"mean_leaves": 38.0, "mean_depth": 5.8, "leaf_p5": 1.0, "leaf_p95": 18.0},
+            "comprisk": {"mean_leaves": 38.0, "mean_depth": 5.8, "leaf_p5": 1.0, "leaf_p95": 18.0},
             "rfSRC": {"mean_leaves": 36.2, "mean_depth": None, "leaf_p5": 1.0, "leaf_p95": 17.0},
         },
     }

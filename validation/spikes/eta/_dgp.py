@@ -1,6 +1,6 @@
 """Frozen Weibull CR DGP for the η perf-ceiling spike.
 
-Mirrors validation/spikes/zeta/run_crforest.py:weibull_cr (same constants),
+Mirrors validation/spikes/zeta/run_comprisk.py:weibull_cr (same constants),
 extended to n=100000. Kept in its own module so all η experiments load
 data through one path.
 """

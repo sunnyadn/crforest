@@ -35,7 +35,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 from sklearn.inspection import permutation_importance
 
-from crforest.metrics import (
+from comprisk.metrics import (
     compute_uno_weights,
     concordance_index_cr,
     concordance_index_uno_cr,
@@ -120,7 +120,7 @@ def _make_cause_scorer(cause: int):
     """Return an sklearn-compatible scorer for the given cause.
 
     The closure expects ``y`` to be a structured array with ``time`` and
-    ``event`` fields (the standard crforest survival outcome representation).
+    ``event`` fields (the standard comprisk survival outcome representation).
     Scoring is done with the Wolbers cause-specific concordance index.
     """
 
@@ -213,13 +213,13 @@ def _predict_tree_mortality(
     if mode == "default":
         if bin_edges is None:
             raise ValueError("bin_edges required for mode='default'")
-        from crforest._binning import apply_bins
-        from crforest._hist_tree import predict_tree_hist
+        from comprisk._binning import apply_bins
+        from comprisk._hist_tree import predict_tree_hist
 
         X_binned = apply_bins(X, bin_edges)
         cif = predict_tree_hist(tree, X_binned)  # (n, n_causes, n_time_bins)
     elif mode == "reference":
-        from crforest._tree import predict_tree
+        from comprisk._tree import predict_tree
 
         cif = predict_tree(tree, X)
     else:

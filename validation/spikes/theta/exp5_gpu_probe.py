@@ -1,6 +1,6 @@
 """θ.5 — GPU feasibility probe.
 
-Self-contained — does NOT need crforest imports. Just numpy + cupy.
+Self-contained — does NOT need comprisk imports. Just numpy + cupy.
 Goal: answer three questions for GPU offload of the CR-forest hot kernel:
 
   1. **Per-call latency floor**: how fast is a minimal kernel + a single

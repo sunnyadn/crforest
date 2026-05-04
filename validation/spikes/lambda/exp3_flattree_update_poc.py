@@ -29,7 +29,7 @@ single bulk transfer at end of fit instead of per-level scribbling.
 POC scope: validate against reference Python loop on synthetic level-data
 covering branch combinations. NOT integrated yet.
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra gpu --extra dev \\
        python -u validation/spikes/lambda/exp3_flattree_update_poc.py'
 """

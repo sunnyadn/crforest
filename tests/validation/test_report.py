@@ -19,7 +19,7 @@ def test_summarize_shape_and_columns():
     assert list(df.columns) == [
         "dataset",
         "n_seeds",
-        "median_c_crforest",
+        "median_c_comprisk",
         "median_c_rfsrc",
         "median_delta_c",
         "iqr_delta_c",
@@ -50,7 +50,7 @@ def test_write_report_produces_markdown(tmp_path: Path):
     out = tmp_path / "report.md"
     write_report(df, out, run_date="2026-04-17", commit="abc123", n_seeds=3)
     content = out.read_text()
-    assert "# crforest vs randomForestSRC" in content
+    assert "# comprisk vs randomForestSRC" in content
     assert "| Dataset |" in content
     assert "| pbc |" in content or "pbc " in content
     assert "| hd |" in content or "hd " in content

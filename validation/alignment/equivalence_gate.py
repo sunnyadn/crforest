@@ -1,4 +1,4 @@
-"""Equivalence-gate audit: crforest vs rfSRC predictive equivalence.
+"""Equivalence-gate audit: comprisk vs rfSRC predictive equivalence.
 
 Purpose (A) from the 2026-04-24 brainstorm: maintainer-invoked audit, not CI.
 Gates predictive equivalence (per-sample risk + pointwise CIF) using noise-floor
@@ -16,7 +16,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from validation.alignment.compare_cif import _fit_crforest, _fit_rfsrc
+from validation.alignment.compare_cif import _fit_comprisk, _fit_rfsrc
 from validation.alignment.ibs import compute_ibs
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR
@@ -319,13 +319,13 @@ def fit_and_capture(
     cr_nsplit: int | None = None,
     rf_reuse_cache: Path | None = None,
 ) -> Path:
-    """Fit crforest + rfSRC on (dataset, seed), eval on reference grid, persist.
+    """Fit comprisk + rfSRC on (dataset, seed), eval on reference grid, persist.
 
     Returns the cache path. Idempotent: if the cache file exists and force_refit
     is False, skips the fit.
 
-    ``cr_nsplit`` threads a crforest nsplit override into the fit. When None
-    (default), crforest resolves to its own default (nsplit=10 in default mode)
+    ``cr_nsplit`` threads a comprisk nsplit override into the fit. When None
+    (default), comprisk resolves to its own default (nsplit=10 in default mode)
     and the cache key is the legacy ``<ds>_s<seed>.parquet`` so existing cached
     cells from the main equivalence gate stay hot. Non-None values append
     ``_nsplit<n>`` to the key.
@@ -333,7 +333,7 @@ def fit_and_capture(
     ``rf_reuse_cache`` points to an existing cell file whose rfSRC CIF +
     native grid should be reused instead of refitting rfSRC. rfSRC is
     deterministic given (data, seed) so this is a pure compute saver for
-    the nsplit convergence sweep where rfSRC is fixed but crforest varies.
+    the nsplit convergence sweep where rfSRC is fixed but comprisk varies.
     """
     suffix = "" if cr_nsplit is None else f"_nsplit{cr_nsplit}"
     path = cache_dir / f"{dataset}_s{seed}{suffix}.parquet"
@@ -355,10 +355,10 @@ def fit_and_capture(
     test_idx = np.sort(row.loc[row["fold"] == "test", "sample_id"].to_numpy(np.int64))
 
     print(
-        f"[lib=crforest ds={dataset} seed={seed}{suffix}] fit_start n_train={len(train_idx)}",
+        f"[lib=comprisk ds={dataset} seed={seed}{suffix}] fit_start n_train={len(train_idx)}",
         flush=True,
     )
-    cr = _fit_crforest(
+    cr = _fit_comprisk(
         X[train_idx],
         time[train_idx],
         event[train_idx],
@@ -370,7 +370,7 @@ def fit_and_capture(
         min_samples_split=min_samples_split,
         nsplit=cr_nsplit,
     )
-    print(f"[lib=crforest ds={dataset} seed={seed}{suffix}] fit_done", flush=True)
+    print(f"[lib=comprisk ds={dataset} seed={seed}{suffix}] fit_done", flush=True)
 
     cause_idx = cause - 1
     cr_cif_native = cr["cif"][:, :, cause_idx]  # (n_test, n_native_cr)
@@ -423,7 +423,7 @@ def capture_tree_stats(forest_cr, rfsrc_native_array_df) -> dict:
     Parameters
     ----------
     forest_cr :
-        A crforest ``CompetingRiskForest`` that has been fit.
+        A comprisk ``CompetingRiskForest`` that has been fit.
     rfsrc_native_array_df :
         The pandas DataFrame form of ``rfSRC fit$forest$nativeArray`` — caller
         passes this from R via rpy2 (or ``None`` if rfSRC info is unavailable).
@@ -445,7 +445,7 @@ def capture_tree_stats(forest_cr, rfsrc_native_array_df) -> dict:
         cr_leaf_sizes_list = []
 
     out = {
-        "crforest": {
+        "comprisk": {
             "mean_leaves": float(np.mean(cr_leaves)),
             "mean_depth": float(np.mean(cr_depths)),
             "leaf_p5": float(np.percentile(cr_leaf_sizes_list, 5))
@@ -543,7 +543,7 @@ def main(argv: list[str] | None = None) -> int:
     from validation.alignment.report_equivalence import write_report
 
     parser = argparse.ArgumentParser(
-        description="crforest vs rfSRC equivalence gate (maintainer-invoked audit).",
+        description="comprisk vs rfSRC equivalence gate (maintainer-invoked audit).",
     )
     parser.add_argument(
         "--datasets",

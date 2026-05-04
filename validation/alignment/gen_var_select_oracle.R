@@ -5,7 +5,7 @@
 #
 # Output: tests/fixtures/rfsrc_var_select_follic.json
 #
-# The crforest test reads this JSON and asserts that
+# The comprisk test reads this JSON and asserts that
 # forest.minimal_depth(equivalence='rfsrc')['feature'].tolist() matches
 # `ranking` exactly (entire ranking, not just selected subset).
 #

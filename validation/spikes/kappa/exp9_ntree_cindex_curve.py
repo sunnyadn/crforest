@@ -10,7 +10,7 @@ isn't relevant to the C-index question).
 
 Output: /tmp/chf_2012_ntree_cindex.parquet
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra dev \\
        python -u validation/spikes/kappa/exp9_ntree_cindex_curve.py \\
        2>&1 | tee /tmp/exp9_ntree_cindex_curve.log'
@@ -29,8 +29,8 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from _lambda_helpers import load_chf, score_four_cindex
 
-from crforest import CompetingRiskForest
-from crforest.metrics import compute_uno_weights
+from comprisk import CompetingRiskForest
+from comprisk.metrics import compute_uno_weights
 
 OUT = Path("/tmp/chf_2012_ntree_cindex.parquet")
 NTREES = [100, 200, 500, 1000]

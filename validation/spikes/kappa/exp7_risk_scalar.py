@@ -1,13 +1,13 @@
 """κ.exp7 — test 'risk scalar choice causes Q1 gap' hypothesis.
 
-κ.exp5 found rfSRC outperforms crforest on early-death pairs. κ.exp6
-refuted the binning-quantization hypothesis. New candidate: crforest's
+κ.exp5 found rfSRC outperforms comprisk on early-death pairs. κ.exp6
+refuted the binning-quantization hypothesis. New candidate: comprisk's
 `predict_risk(cause=k) = CIF_k(at last time)` saturates near 1 for
 high-risk subjects, while rfSRC's `predicted[,k] = sum_t CHF_k(t)` does
 not — integrated CHF preserves rank ordering at the extreme tail where
 early-death (high-risk) subjects live.
 
-Test: refit crforest seed=42, build a mortality-style scalar from
+Test: refit comprisk seed=42, build a mortality-style scalar from
 predict_chf (integrate cause-2 CHF over time), re-run Q1-Q4 diagnostic
 against the same rfSRC seed=42 risks. If Q1 gap shrinks, the original
 0.035 gap was risk-scalar artifact, not algorithm difference.
@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest, concordance_index_cr
+from comprisk import CompetingRiskForest, concordance_index_cr
 
 CLEAN_PARQUET = Path("/tmp/chf_2012_clean.parquet")
 TRAIN_IDX = Path("/tmp/chf_2012_train_idx.txt")
@@ -85,7 +85,7 @@ def main() -> None:
         flush=True,
     )
 
-    print("Fitting crforest seed=42 (n_bins=256, default config)...", flush=True)
+    print("Fitting comprisk seed=42 (n_bins=256, default config)...", flush=True)
     f = CompetingRiskForest(n_estimators=100, n_jobs=-1, random_state=42)
     t0 = _time.perf_counter()
     f.fit(X_tr, t_tr, e_tr)
@@ -126,7 +126,7 @@ def main() -> None:
     all_strat = pd.concat([s_a, s_b, s_c], ignore_index=True)
 
     print("=" * 90)
-    print(" Death (cause-2) Harrell C-index per quartile, varying crforest risk scalar")
+    print(" Death (cause-2) Harrell C-index per quartile, varying comprisk risk scalar")
     print("=" * 90)
     print(
         f"{'scalar':<14}{'Q1 gap':>11}{'Q2 gap':>11}{'Q3 gap':>11}{'Q4 gap':>11}"
@@ -145,7 +145,7 @@ def main() -> None:
     print("-" * 90)
 
     # Overall Harrell for sanity
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     uno_w = compute_uno_weights(t_te, e_te)
     print("\n  Overall Harrell / Uno on full test set:")

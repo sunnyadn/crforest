@@ -12,7 +12,7 @@ Configs swept on hd (both libs matched at each cell):
     C_full_mtry     bootstrap=F  mtry=p        nsplit=10  ntree=500
     D_exhaustive    bootstrap=F  mtry=p        nsplit=0   ntree=500
     E_single_tree   bootstrap=F  mtry=p        nsplit=0   ntree=1
-    F_no_time_coarsen  E + crforest split_ntime=None (logrank on full time grid).
+    F_no_time_coarsen  E + comprisk split_ntime=None (logrank on full time grid).
     G_strict_alignment F + rfSRC ntime=0 (full event times on rfSRC output grid,
                        so both libs' CIF grids have no coarsening bias).
 
@@ -38,7 +38,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 from validation.alignment.equivalence_gate import (
     QUANTILE_GRID,
     _git_sha,
@@ -59,7 +59,7 @@ class Config:
     nsplit: int
     ntree: int
     notes: str
-    split_ntime: int | None = 50  # crforest default; None = full time grid
+    split_ntime: int | None = 50  # comprisk default; None = full time grid
     rf_ntime: int = 150  # rfSRC default output-grid size; 0 = all event times
 
 
@@ -95,7 +95,7 @@ CONFIGS: tuple[Config, ...] = (
         mtry="full",
         nsplit=0,
         ntree=1,
-        notes="+ crforest split_ntime=None",
+        notes="+ comprisk split_ntime=None",
         split_ntime=None,
     ),
     Config(
@@ -111,7 +111,7 @@ CONFIGS: tuple[Config, ...] = (
 )
 
 
-def _fit_crforest(
+def _fit_comprisk(
     X_tr: np.ndarray,
     t_tr: np.ndarray,
     e_tr: np.ndarray,
@@ -220,7 +220,7 @@ def _run_cell(dataset: str, seed: int, cfg: Config) -> dict:
         f"[{cfg.name} ds={dataset} seed={seed}] cr_fit_start n_train={len(train_idx)} p={p}",
         flush=True,
     )
-    cr = _fit_crforest(
+    cr = _fit_comprisk(
         X[train_idx], time[train_idx], event[train_idx], X[test_idx], seed=seed, cfg=cfg, p=p
     )
     print(f"[{cfg.name} seed={seed}] cr_fit_done wall={_time.perf_counter() - t0:.1f}s", flush=True)
@@ -280,7 +280,7 @@ def _attribution(rows: list[dict]) -> str:
         ("B_no_bootstrap", "C_full_mtry"): "mtry feature-subsampling contribution",
         ("C_full_mtry", "D_exhaustive"): "nsplit randomness contribution",
         ("D_exhaustive", "E_single_tree"): "ensemble aggregation contribution",
-        ("E_single_tree", "F_no_time_coarsen"): "crforest split_ntime coarsening contribution",
+        ("E_single_tree", "F_no_time_coarsen"): "comprisk split_ntime coarsening contribution",
         (
             "F_no_time_coarsen",
             "G_strict_alignment",
@@ -323,7 +323,7 @@ def _verdict(rows: list[dict]) -> str:
         f"**Verdict.** At the fully-deterministic config (E), cross_p95_cif is still "
         f"{e:.4f} (vs {a:.4f} at default, {shrink:.0%} reduction). Removing sampling "
         "sources does NOT close the gap. The residual is genuinely algorithmic "
-        "(binning granularity on the crforest side, tiebreak ordering, or both). "
+        "(binning granularity on the comprisk side, tiebreak ordering, or both). "
         "Further diagnostic should walk the single tree's split choices."
     )
 

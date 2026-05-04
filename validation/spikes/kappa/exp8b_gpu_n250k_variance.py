@@ -11,7 +11,7 @@ This script:
 
 Output: /tmp/gpu_n250k_variance.parquet
 
-Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/crforest && \\
+Run: ssh win 'export PATH=$HOME/.local/bin:$PATH && cd ~/comprisk && \\
        PYTHONUNBUFFERED=1 uv run --extra gpu --extra dev \\
        python -u validation/spikes/kappa/exp8b_gpu_n250k_variance.py \\
        2>&1 | tee /tmp/exp8b_gpu_n250k_variance.log'
@@ -25,7 +25,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 OUT_WALLS = Path("/tmp/gpu_n250k_variance.parquet")
 N = 250_000

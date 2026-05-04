@@ -19,8 +19,8 @@ from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr
 from scipy.stats import spearmanr
 
-from crforest import CompetingRiskForest
-from crforest._importance import _predict_tree_mortality
+from comprisk import CompetingRiskForest
+from comprisk._importance import _predict_tree_mortality
 from validation.alignment import _rpy2_converter
 from validation.datasets import load as load_dataset
 from validation.splits import _SPLITS_DIR

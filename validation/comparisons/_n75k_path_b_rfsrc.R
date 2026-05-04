@@ -1,7 +1,7 @@
 # Single-seed rfSRC fit at n=75k for the n75k_path_b harness.
 #
 # CLI: Rscript _n75k_path_b_rfsrc.R <seed> <rf.cores>
-#   <seed>     integer (-s seeds rfSRC's RNG; we pass the same seed crforest uses)
+#   <seed>     integer (-s seeds rfSRC's RNG; we pass the same seed comprisk uses)
 #   <rf.cores> integer; 1 = OMP-off (R-on-macOS default), $(nproc) = OMP-on
 #
 # Reads the staged CHF cohort at /tmp/chf_2012_*.parquet and the

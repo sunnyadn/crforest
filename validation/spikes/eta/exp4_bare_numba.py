@@ -1,7 +1,7 @@
 """η spike — Experiment 4: bare-numba single-tree floor at n=100k.
 
 Two layers of "floor":
-  (1) Single-tree wall in current crforest with n_jobs=1 ntree=1.
+  (1) Single-tree wall in current comprisk with n_jobs=1 ntree=1.
       Tells us: per-tree wall in the production engine.
   (2) Repeated calls to ``find_best_split_hist_batched`` (an existing
       ``@njit nogil cache`` kernel) on the full n=100k root node. Sums
@@ -26,10 +26,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 import numpy as np
 from _dgp import load
 
-from crforest import CompetingRiskForest
-from crforest._binning import apply_bins, fit_bin_edges
-from crforest._hist_splits import find_best_split_hist_batched
-from crforest._time_grid import coarsen_time_grid, fit_time_grid
+from comprisk import CompetingRiskForest
+from comprisk._binning import apply_bins, fit_bin_edges
+from comprisk._hist_splits import find_best_split_hist_batched
+from comprisk._time_grid import coarsen_time_grid, fit_time_grid
 
 LOG_DIR = Path(__file__).parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)

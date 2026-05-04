@@ -1,15 +1,19 @@
 cff-version: 1.2.0
-message: "If you use crforest in your research, please cite it as below."
-title: "crforest: competing risks random survival forests for Python"
+message: "If you use comprisk in your research, please cite it as below."
+title: "comprisk: a Python toolkit for competing risks"
 abstract: >-
-  A Python implementation of competing-risks random survival forests with
-  a scikit-learn-compatible API, Aalen-Johansen CIF and Nelson-Aalen CHF
-  outputs, cause-specific Wolbers and Uno IPCW concordance metrics, OOB
-  Breiman permutation variable importance, and bit-identical
-  reproducibility with randomForestSRC.
+  A Python toolkit for competing-risks survival analysis. The 0.3 release
+  ships a competing-risks random survival forest with a scikit-learn-
+  compatible API, Aalen-Johansen CIF and Nelson-Aalen CHF outputs, cause-
+  specific Wolbers and Uno IPCW concordance metrics, OOB Breiman
+  permutation variable importance, Ishwaran minimal-depth variable
+  selection, and bit-identical reproducibility with randomForestSRC. The
+  v0.4 roadmap adds Fine-Gray subdistribution-hazard regression, a stand-
+  alone Aalen-Johansen cumulative-incidence estimator, Gray's K-sample
+  test, and cause-specific Cox PH. Renamed from `crforest` in 0.3.1.
 type: software
-version: 0.3.0
-date-released: 2026-05-03
+version: 0.3.1
+date-released: 2026-05-04
 doi: 10.5281/zenodo.19984110
 identifiers:
   - type: doi
@@ -18,9 +22,9 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.19984110
     description: Version DOI (v0.2.0)
-url: https://github.com/sunnyadn/crforest
-repository-code: https://github.com/sunnyadn/crforest
-repository-artifact: https://pypi.org/project/crforest/
+url: https://github.com/sunnyadn/comprisk
+repository-code: https://github.com/sunnyadn/comprisk
+repository-artifact: https://pypi.org/project/comprisk/
 license: Apache-2.0
 authors:
   - family-names: Yang

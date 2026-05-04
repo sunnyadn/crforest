@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from crforest import CompetingRiskForest
+from comprisk import CompetingRiskForest
 
 
 def _toy(n=200, p=4, seed=0, n_causes=2):
@@ -17,7 +17,7 @@ def _toy(n=200, p=4, seed=0, n_causes=2):
 
 
 def test_derive_perm_seeds_shape_and_determinism():
-    from crforest._importance import _derive_perm_seeds
+    from comprisk._importance import _derive_perm_seeds
 
     seeds_a = _derive_perm_seeds(random_state=42, n_trees=5, n_features=7)
     seeds_b = _derive_perm_seeds(random_state=42, n_trees=5, n_features=7)
@@ -29,7 +29,7 @@ def test_derive_perm_seeds_shape_and_determinism():
 
 
 def test_derive_perm_seeds_none_random_state():
-    from crforest._importance import _derive_perm_seeds
+    from comprisk._importance import _derive_perm_seeds
 
     seeds = _derive_perm_seeds(random_state=None, n_trees=3, n_features=4)
     assert seeds.shape == (3, 4)
@@ -54,11 +54,11 @@ def _naive_oob_vimp(forest, *, cause: int, random_state: int) -> np.ndarray:
     No parallelism, no shared computation, no clever indexing — by-the-book.
     Returns shape ``(n_features,)``.
     """
-    from crforest._importance import (
+    from comprisk._importance import (
         _derive_perm_seeds,
         _predict_tree_mortality,
     )
-    from crforest.metrics import compute_uno_weights, concordance_index_uno_cr
+    from comprisk.metrics import compute_uno_weights, concordance_index_uno_cr
 
     X = forest._X_train_oob_
     time = forest._y_train_oob_["time"]
@@ -160,7 +160,7 @@ def test_oob_constant_feature_yields_zero_vimp():
 
 
 def test_compute_importance_oob_impl_returns_dataframe():
-    from crforest._importance import _compute_importance_oob_impl
+    from comprisk._importance import _compute_importance_oob_impl
 
     X, t, e = _toy(n=200, p=4)
     forest = CompetingRiskForest(n_estimators=10, random_state=42).fit(X, t, e)
@@ -183,7 +183,7 @@ def test_compute_importance_oob_impl_returns_dataframe():
 
 
 def test_compute_importance_oob_impl_n_jobs_bit_equivalent():
-    from crforest._importance import _compute_importance_oob_impl
+    from comprisk._importance import _compute_importance_oob_impl
 
     X, t, e = _toy(n=200, p=4)
     forest = CompetingRiskForest(n_estimators=10, random_state=42).fit(X, t, e)

@@ -17,7 +17,7 @@ def _make_inputs(n=500, p=8, n_bins=32, n_causes=2, n_time_bins=64, seed=0):
 
 
 def test_build_flat_tree_gpu_returns_flat_tree():
-    from crforest._gpu_kernels import build_flat_tree_gpu
+    from comprisk._gpu_kernels import build_flat_tree_gpu
 
     X, t_idx, event, bootstrap = _make_inputs()
     flat = build_flat_tree_gpu(
@@ -42,7 +42,7 @@ def test_build_flat_tree_gpu_returns_flat_tree():
 
 
 def test_build_flat_tree_gpu_three_runs_identical():
-    from crforest._gpu_kernels import build_flat_tree_gpu
+    from comprisk._gpu_kernels import build_flat_tree_gpu
 
     X, t_idx, event, bootstrap = _make_inputs()
 
@@ -72,7 +72,7 @@ def test_build_flat_tree_gpu_three_runs_identical():
 
 
 def test_build_flat_tree_gpu_five_runs_bit_identical():
-    from crforest._gpu_kernels import build_flat_tree_gpu
+    from comprisk._gpu_kernels import build_flat_tree_gpu
 
     X, t_idx, event, bootstrap = _make_inputs(seed=2)
     runs = []
