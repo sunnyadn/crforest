@@ -54,39 +54,42 @@ def test_walker_flat_tree_finds_root_split():
     assert res.min_depth_per_feature.dtype == np.int32
     # At least one feature must be the root split (depth 0)
     assert res.min_depth_per_feature.min() == 0
-    # Every value is in [0, D_T + 1]
+    # Every value is in [0, D_T]  (sentinel = D_T per Eq. (2))
     assert (res.min_depth_per_feature >= 0).all()
-    assert (res.min_depth_per_feature <= res.max_depth + 1).all()
+    assert (res.min_depth_per_feature <= res.max_depth).all()
 
 
 def test_ishwaran_threshold_handcomputed():
     """Depth-2 toy tree: 1 internal node at depth 0, 2 internals at depth 1.
 
-    p = 4, so (1 - 1/p) = 3/4. Cumulative internal counts cumL = [1, 3, 3].
+    p = 4, so (1 - 1/p) = 3/4.
+    cumL_partial = cumsum([1, 2]) = [1, 3]  (length D_T = 2)
     P(md > 0) = (3/4)^1 = 0.75
     P(md > 1) = (3/4)^3 = 27/64 = 0.421875
-    P(md > 2) = (3/4)^3 = 27/64 = 0.421875
-    E[md] = 0.75 + 0.421875 + 0.421875 = 1.59375
+    E[md] = 0.75 + 0.421875 = 1.171875
 
-    Sanity: P(md=0)=0.25, P(md=1)=0.328125, P(md=2)=0, P(md=3)=0.421875
-            -> 0*0.25 + 1*0.328125 + 2*0 + 3*0.421875 = 1.59375
+    Sanity check via PMF:
+      P(md=0) = 1 - (3/4)^1     = 0.25
+      P(md=1) = (3/4)^1 - (3/4)^3 = 0.328125
+      P(md=2) = sentinel mass = (3/4)^3 = 0.421875
+      E = 0*0.25 + 1*0.328125 + 2*0.421875 = 0.328125 + 0.84375 = 1.171875 ✓
     """
     from crforest._minimal_depth import _ishwaran_expected_md
 
     L = np.array([1, 2], dtype=np.int64)
-    expected = 1.59375
+    expected = 1.171875
     got = _ishwaran_expected_md(L, max_depth_T=2, n_features=4)
     assert abs(got - expected) < 1e-12, f"got {got}, expected {expected}"
 
 
 def test_ishwaran_threshold_pure_stump():
-    """Pure stump (D_T = 0, no internals): expected md = 1.0."""
+    """Pure stump (D_T = 0, no internals): every variable trivially gets Dv = 0 = D_T,
+    so E[Dv] = 0 (empty sum)."""
     from crforest._minimal_depth import _ishwaran_expected_md
 
     L = np.array([], dtype=np.int64)
     got = _ishwaran_expected_md(L, max_depth_T=0, n_features=4)
-    # cumL_full = [0]; P(md>0) = (3/4)^0 = 1.0; sum = 1.0
-    assert abs(got - 1.0) < 1e-12
+    assert abs(got - 0.0) < 1e-12
 
 
 def test_determinism_across_n_jobs():
@@ -120,24 +123,23 @@ def test_planted_signal_ranks_above_noise():
 
 
 def test_pure_stump_edge_case():
-    """Forest fit with min_samples_leaf > n/2 yields pure stumps (no splits)."""
+    """Forest fit on near-zero-event data yields pure stumps; D_T = 0 so all
+    features get min_depth = 0 (sentinel) and threshold = 0 (degenerate)."""
     rng = np.random.RandomState(0)
     n, p = 50, 4
     X = rng.randn(n, p)
     time = rng.uniform(0.1, 10, n)
-    # 2 events only; min_samples_leaf=40 forces every bootstrap sample to be unsplittable
     event = np.zeros(n, dtype=np.int64)
-    event[:2] = 1
+    # Need at least 2 events to satisfy check_inputs
+    event[0] = 1
+    event[1] = 2
     y = np.array(list(zip(event, time, strict=False)), dtype=[("event", "i8"), ("time", "f8")])
     forest = CompetingRiskForest(
         n_estimators=10, max_depth=4, min_samples_leaf=40, random_state=0, n_jobs=1
     ).fit(X, y)
     df = forest.minimal_depth()
-    # All features should have mean_min_depth == 1.0 (D_T=0, sentinel = 1)
-    assert (df["mean_min_depth"] == 1.0).all()
-    # Edge-case: thr = 1.0 too, so selected = mean_md <= thr is True everywhere.
-    # This is uninformative output, but mathematically consistent.
-    assert df["selected"].all()
+    assert (df["mean_min_depth"] == 0.0).all()
+    assert df["selected"].all()  # 0 <= 0 trivially
 
 
 def test_tree_mode_coverage():
@@ -165,13 +167,6 @@ def test_tree_mode_coverage():
     assert isinstance(f_ref.trees_[0], RefTreeNode)
     assert list(df_ref.columns) == cols
     assert len(df_ref) == f_ref.n_features_in_
-
-
-def test_conservative_selects_subset_of_default():
-    forest = _fit(seed=3)
-    sel_default = set(forest.minimal_depth(conservative=False).query("selected").feature.tolist())
-    sel_strict = set(forest.minimal_depth(conservative=True).query("selected").feature.tolist())
-    assert sel_strict.issubset(sel_default)
 
 
 def test_return_extra_columns():
@@ -205,10 +200,68 @@ def test_invalid_threshold_raises():
         forest.minimal_depth(threshold="vh")
 
 
-def test_invalid_conservative_type_raises():
-    forest = _fit(seed=0)
-    with pytest.raises(TypeError, match="conservative must be bool"):
-        forest.minimal_depth(conservative="yes")  # type: ignore[arg-type]
+def test_paper_figure_3_balanced_tree_mean():
+    """Sanity check against Ishwaran 2010 JASA Figure 3.
+
+    Paper text: 'When p is 500, the mean for Dv is roughly 7, and when p is
+    as large as 10,000, the mean is roughly 9' for a balanced tree of
+    D(T) = 10.
+
+    Balanced tree of depth 10 has L_d = 2^d for d in 0..9 (total internal
+    nodes = 2^10 - 1 = 1023). Exact values from Theorem 1 / Eq. (1):
+      p=500:   E[Dv] = 7.634  (paper reads '~7' from Figure 3)
+      p=10000: E[Dv] = 9.803  (paper reads '~9' from Figure 3)
+
+    Bounds allow ±1 around the paper's round-number description to accommodate
+    the visual read-off nature of Figure 3.
+    """
+    from crforest._minimal_depth import _ishwaran_expected_md
+
+    L = np.array([2**d for d in range(10)], dtype=np.int64)
+    D_T = 10
+    e_500 = _ishwaran_expected_md(L, max_depth_T=D_T, n_features=500)
+    e_10000 = _ishwaran_expected_md(L, max_depth_T=D_T, n_features=10000)
+    assert 6.0 < e_500 < 8.5, f"paper says ~7 for p=500, got {e_500}"
+    assert 8.5 < e_10000 < 10.5, f"paper says ~9 for p=10000, got {e_10000}"
+
+
+def test_forest_averaged_threshold_single_tree():
+    """With a single tree, forest-averaged threshold equals per-tree E[Dv]."""
+    from crforest._minimal_depth import (
+        WalkResult,
+        _forest_averaged_threshold,
+        _ishwaran_expected_md,
+    )
+
+    L = np.array([1, 2], dtype=np.int64)
+    wr = WalkResult(
+        min_depth_per_feature=np.array([0, 1, 2, 2], dtype=np.int32),
+        internal_nodes_per_depth=L,
+        max_depth=2,
+    )
+    direct = _ishwaran_expected_md(L, max_depth_T=2, n_features=4)
+    forest_avg = _forest_averaged_threshold([wr], n_features=4)
+    assert abs(direct - forest_avg) < 1e-12
+
+
+def test_forest_averaged_threshold_handles_varying_depth():
+    """Trees with different max_depth padded correctly when averaging L."""
+    from crforest._minimal_depth import WalkResult, _forest_averaged_threshold
+
+    wr_short = WalkResult(
+        min_depth_per_feature=np.array([0, 0, 1, 1], dtype=np.int32),
+        internal_nodes_per_depth=np.array([1], dtype=np.int64),
+        max_depth=1,
+    )
+    wr_long = WalkResult(
+        min_depth_per_feature=np.array([0, 1, 2, 3], dtype=np.int32),
+        internal_nodes_per_depth=np.array([1, 2, 4], dtype=np.int64),
+        max_depth=3,
+    )
+    # Should not raise; should return a sensible float
+    thr = _forest_averaged_threshold([wr_short, wr_long], n_features=4)
+    assert thr > 0  # nondegenerate
+    assert np.isfinite(thr)
 
 
 def test_rfsrc_var_select_match_follic():
@@ -274,14 +327,9 @@ def test_rfsrc_var_select_match_follic():
     df = forest.minimal_depth()
     got_ranking = df["feature"].tolist()
     # Note: this test asserts ranking order only, not numeric mean_min_depth values.
-    # crforest uses sentinel D_T+1 (max leaf depth + 1) for variables never split on;
-    # rfSRC's max.subtree uses a different sentinel convention — see commit history
-    # for the empirical max-diff observed during Task 8 investigation.
-    # Measured on 2026-05-03 with follic ntree=100 seed=42: max |Δ mean_min_depth| = 2.35
-    #   got: age=0.48, clinstg=1.37, hgb=1.78, ch=2.60, rt=9.90
-    #   exp: age=0.44, clinstg=1.04, hgb=2.16, ch=2.24, rt=12.25
-    # Ranking is the load-bearing partner-facing output, so order-only agreement
-    # under equivalence='rfsrc' is the correct invariant to lock down.
+    # crforest uses the paper's forest-averaged threshold (Section 3); rfSRC uses
+    # tree-averaged aggregation, so threshold values will differ. Ranking agreement
+    # under equivalence='rfsrc' is the load-bearing invariant.
     assert got_ranking == oracle["ranking"], (
         f"ranking mismatch:\n  got: {got_ranking}\n  exp: {oracle['ranking']}"
     )

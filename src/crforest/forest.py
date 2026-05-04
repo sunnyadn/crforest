@@ -826,30 +826,26 @@ class CompetingRiskForest(BaseEstimator):
         self,
         threshold: str = "md",
         *,
-        conservative: bool = False,
         return_extra: bool = False,
     ):
         """Ishwaran-style minimal-depth variable selection.
 
         A variable's *minimal depth* in a tree is the depth of the highest
         split that uses it (root = depth 0). Variables never split on get
-        a sentinel depth of ``D_T + 1`` where ``D_T`` is the tree's max
-        depth. Smaller mean minimal depth across the forest indicates a
-        more important variable.
+        a sentinel depth of ``D_T`` where ``D_T`` is the tree's max depth
+        (Ishwaran et al. 2010, JASA, Eq. (2)). Smaller mean minimal depth
+        across the forest indicates a more important variable.
 
-        The selection threshold is the per-forest mean of the *expected*
-        minimal depth under the null hypothesis of no association
-        (Ishwaran et al. 2010, JASA, eq. 4.1) — derived analytically from
-        each tree's depth structure.
+        The selection threshold is E[D*v] computed once from the
+        forest-averaged node-count vector l_bar*_d and average tree depth
+        D_bar, per Ishwaran et al. (2010, JASA, Theorem 1 + Section 3).
 
         Parameters
         ----------
         threshold : {"md"}, default "md"
-            Selection threshold. Only Ishwaran's analytical ``"md"`` is
-            supported in v0.3.0.
-        conservative : bool, default False
-            If True, subtract ``2 * stderr(E[md_T])`` from the threshold
-            for a stricter cut.
+            Selection threshold method. Only forest-averaged ``"md"`` (the
+            paper's recommendation, Ishwaran et al. 2010, JASA, Section 3)
+            is supported in v0.3.0.
         return_extra : bool, default False
             If True, additionally include ``min_depth_q25``,
             ``min_depth_q75``, ``frac_trees_used`` columns.
@@ -869,9 +865,10 @@ class CompetingRiskForest(BaseEstimator):
 
         Notes
         -----
-        Bit-equivalent to ``randomForestSRC::var.select(method='md')`` when
-        the forest is fitted with ``equivalence='rfsrc'`` and the same
-        random seed.
+        The threshold uses the paper's recommended forest-averaging (Section 3),
+        not tree-averaged E[md_T]. rfSRC defaults to tree-averaged aggregation,
+        so numeric threshold values may differ from rfSRC even with
+        ``equivalence='rfsrc'``.
         """
         check_is_fitted(self, "trees_")
         from crforest._minimal_depth import compute_minimal_depth
@@ -879,7 +876,6 @@ class CompetingRiskForest(BaseEstimator):
         return compute_minimal_depth(
             self,
             threshold=threshold,
-            conservative=conservative,
             return_extra=return_extra,
         )
 
