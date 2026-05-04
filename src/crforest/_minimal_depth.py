@@ -163,5 +163,76 @@ def compute_minimal_depth(
     conservative: bool = False,
     return_extra: bool = False,
 ) -> pd.DataFrame:
-    """Compute minimal-depth ranking + threshold-based selection. See API spec."""
-    raise NotImplementedError
+    """Ishwaran-style minimal-depth variable selection.
+
+    Parameters
+    ----------
+    forest : CompetingRiskForest
+        Fitted forest (``trees_`` populated).
+    threshold : {"md"}, default "md"
+        Selection threshold. Only ``"md"`` (Ishwaran analytical) supported
+        in v0.3.0; future releases may add ``"vh"`` (variable hunting).
+    conservative : bool, default False
+        If True, subtract ``2 * stderr(E[md_T])`` from the threshold for a
+        stricter cut (Ishwaran's high-confidence mode).
+    return_extra : bool, default False
+        If True, append ``min_depth_q25``, ``min_depth_q75``,
+        ``frac_trees_used`` columns for diagnostic plots.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Sorted ascending by ``mean_min_depth``. Columns:
+        ``feature``, ``mean_min_depth``, ``threshold``, ``selected``.
+    """
+    if threshold != "md":
+        raise ValueError(f"threshold must be 'md' (got {threshold!r}); 'vh' is not yet supported.")
+    if not isinstance(conservative, bool):
+        raise TypeError(f"conservative must be bool, got {type(conservative).__name__}")
+
+    p = forest.n_features_in_
+    feature_names = forest._importance_feature_names()
+    trees = forest.trees_
+    n_trees = len(trees)
+    assert n_trees > 0, "fitted forest must have at least one tree"
+
+    md_matrix = np.empty((n_trees, p), dtype=np.int32)
+    expected_md = np.empty(n_trees, dtype=np.float64)
+    for i, tree in enumerate(trees):
+        res = _walk_min_depth(tree, p)
+        md_matrix[i] = res.min_depth_per_feature
+        expected_md[i] = _ishwaran_expected_md(res.internal_nodes_per_depth, res.max_depth, p)
+
+    mean_md = md_matrix.mean(axis=0)
+    thr = float(expected_md.mean())
+    if conservative and n_trees > 1:
+        se = float(expected_md.std(ddof=1) / np.sqrt(n_trees))
+        thr = thr - 2.0 * se
+    selected = mean_md <= thr
+
+    out = (
+        pd.DataFrame(
+            {
+                "feature": feature_names,
+                "mean_min_depth": mean_md.astype(np.float64),
+                "threshold": np.full(p, thr, dtype=np.float64),
+                "selected": selected,
+            }
+        )
+        .sort_values("mean_min_depth", kind="mergesort")
+        .reset_index(drop=True)
+    )
+
+    if return_extra:
+        q25 = np.quantile(md_matrix, 0.25, axis=0)
+        q75 = np.quantile(md_matrix, 0.75, axis=0)
+        # Per-tree sentinel = D_T + 1 = max value in that tree's row
+        per_tree_sentinel = md_matrix.max(axis=1, keepdims=True)
+        frac_used = (md_matrix < per_tree_sentinel).mean(axis=0)
+        # Reorder extras to match the sorted output
+        name_to_pos = {n: i for i, n in enumerate(feature_names)}
+        orig_idx = np.array([name_to_pos[n] for n in out["feature"]], dtype=np.int64)
+        out["min_depth_q25"] = q25[orig_idx]
+        out["min_depth_q75"] = q75[orig_idx]
+        out["frac_trees_used"] = frac_used[orig_idx]
+    return out

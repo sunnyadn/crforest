@@ -86,3 +86,54 @@ def test_ishwaran_threshold_pure_stump():
     got = _ishwaran_expected_md(L, max_depth_T=0, n_features=4)
     # cumL_full = [0]; P(md>0) = (3/4)^0 = 1.0; sum = 1.0
     assert abs(got - 1.0) < 1e-12
+
+
+def test_determinism_across_n_jobs():
+    f1 = _fit(seed=42, n_jobs=1)
+    f4 = _fit(seed=42, n_jobs=4)
+    df1 = f1.minimal_depth()
+    df4 = f4.minimal_depth()
+    pd_assert_frame = __import__("pandas").testing.assert_frame_equal
+    pd_assert_frame(df1, df4)
+
+
+def test_planted_signal_ranks_above_noise():
+    """3 informative + 7 noise features. Informative land in top-3."""
+    rng = np.random.RandomState(7)
+    n, p_signal, p_noise = 2000, 3, 7
+    X = rng.randn(n, p_signal + p_noise)
+    # event hazard depends on first 3 features
+    lin = X[:, :p_signal] @ np.array([1.0, -1.0, 0.5])
+    time = rng.exponential(scale=np.exp(-lin) + 0.1)
+    event = (rng.uniform(size=n) < 0.7).astype(np.int64)  # ~70% event
+    event[event == 1] = (rng.randint(1, 3, size=event.sum())).astype(np.int64)
+    y = np.array(list(zip(event, time, strict=False)), dtype=[("event", "i8"), ("time", "f8")])
+    forest = CompetingRiskForest(
+        n_estimators=200, max_depth=8, min_samples_leaf=10, random_state=7, n_jobs=1
+    ).fit(X, y)
+    df = forest.minimal_depth()
+    top3 = set(df["feature"].iloc[:3].tolist())
+    informative = {f"feature_{i}" for i in range(p_signal)}
+    overlap = len(top3 & informative)
+    assert overlap >= 2, f"top-3 = {top3}; informative = {informative}; overlap {overlap}/3"
+
+
+def test_pure_stump_edge_case():
+    """Forest fit with min_samples_leaf > n/2 yields pure stumps (no splits)."""
+    rng = np.random.RandomState(0)
+    n, p = 50, 4
+    X = rng.randn(n, p)
+    time = rng.uniform(0.1, 10, n)
+    # 2 events only; min_samples_leaf=40 forces every bootstrap sample to be unsplittable
+    event = np.zeros(n, dtype=np.int64)
+    event[:2] = 1
+    y = np.array(list(zip(event, time, strict=False)), dtype=[("event", "i8"), ("time", "f8")])
+    forest = CompetingRiskForest(
+        n_estimators=10, max_depth=4, min_samples_leaf=40, random_state=0, n_jobs=1
+    ).fit(X, y)
+    df = forest.minimal_depth()
+    # All features should have mean_min_depth == 1.0 (D_T=0, sentinel = 1)
+    assert (df["mean_min_depth"] == 1.0).all()
+    # Edge-case: thr = 1.0 too, so selected = mean_md <= thr is True everywhere.
+    # This is uninformative output, but mathematically consistent.
+    assert df["selected"].all()

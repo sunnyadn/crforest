@@ -822,6 +822,67 @@ class CompetingRiskForest(BaseEstimator):
         self._feature_importances_cache = df
         return df
 
+    def minimal_depth(
+        self,
+        threshold: str = "md",
+        *,
+        conservative: bool = False,
+        return_extra: bool = False,
+    ):
+        """Ishwaran-style minimal-depth variable selection.
+
+        A variable's *minimal depth* in a tree is the depth of the highest
+        split that uses it (root = depth 0). Variables never split on get
+        a sentinel depth of ``D_T + 1`` where ``D_T`` is the tree's max
+        depth. Smaller mean minimal depth across the forest indicates a
+        more important variable.
+
+        The selection threshold is the per-forest mean of the *expected*
+        minimal depth under the null hypothesis of no association
+        (Ishwaran et al. 2010, JASA, eq. 4.1) — derived analytically from
+        each tree's depth structure.
+
+        Parameters
+        ----------
+        threshold : {"md"}, default "md"
+            Selection threshold. Only Ishwaran's analytical ``"md"`` is
+            supported in v0.3.0.
+        conservative : bool, default False
+            If True, subtract ``2 * stderr(E[md_T])`` from the threshold
+            for a stricter cut.
+        return_extra : bool, default False
+            If True, additionally include ``min_depth_q25``,
+            ``min_depth_q75``, ``frac_trees_used`` columns.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Sorted ascending by ``mean_min_depth``. Columns:
+            ``feature``, ``mean_min_depth``, ``threshold``, ``selected``.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If the forest has not been fitted.
+        ValueError
+            If ``threshold`` is not ``"md"``.
+
+        Notes
+        -----
+        Bit-equivalent to ``randomForestSRC::var.select(method='md')`` when
+        the forest is fitted with ``equivalence='rfsrc'`` and the same
+        random seed.
+        """
+        check_is_fitted(self, "trees_")
+        from crforest._minimal_depth import compute_minimal_depth
+
+        return compute_minimal_depth(
+            self,
+            threshold=threshold,
+            conservative=conservative,
+            return_extra=return_extra,
+        )
+
     @property
     def feature_importances_(self):
         """Cached result of the last ``compute_importance`` call.
