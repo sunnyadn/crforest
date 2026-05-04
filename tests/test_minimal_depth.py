@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from crforest import CompetingRiskForest
 
@@ -188,3 +189,23 @@ def test_return_extra_columns():
     # quartiles bounded by mean_min_depth ordering invariants
     assert (df["min_depth_q25"] <= df["min_depth_q75"]).all()
     assert ((df["frac_trees_used"] >= 0.0) & (df["frac_trees_used"] <= 1.0)).all()
+
+
+def test_unfitted_raises():
+    from sklearn.exceptions import NotFittedError
+
+    forest = CompetingRiskForest(n_estimators=5)
+    with pytest.raises(NotFittedError):
+        forest.minimal_depth()
+
+
+def test_invalid_threshold_raises():
+    forest = _fit(seed=0)
+    with pytest.raises(ValueError, match="threshold must be 'md'"):
+        forest.minimal_depth(threshold="vh")
+
+
+def test_invalid_conservative_type_raises():
+    forest = _fit(seed=0)
+    with pytest.raises(TypeError, match="conservative must be bool"):
+        forest.minimal_depth(conservative="yes")  # type: ignore[arg-type]
