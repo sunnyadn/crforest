@@ -273,6 +273,15 @@ def test_rfsrc_var_select_match_follic():
 
     df = forest.minimal_depth()
     got_ranking = df["feature"].tolist()
+    # Note: this test asserts ranking order only, not numeric mean_min_depth values.
+    # crforest uses sentinel D_T+1 (max leaf depth + 1) for variables never split on;
+    # rfSRC's max.subtree uses a different sentinel convention — see commit history
+    # for the empirical max-diff observed during Task 8 investigation.
+    # Measured on 2026-05-03 with follic ntree=100 seed=42: max |Δ mean_min_depth| = 2.35
+    #   got: age=0.48, clinstg=1.37, hgb=1.78, ch=2.60, rt=9.90
+    #   exp: age=0.44, clinstg=1.04, hgb=2.16, ch=2.24, rt=12.25
+    # Ranking is the load-bearing partner-facing output, so order-only agreement
+    # under equivalence='rfsrc' is the correct invariant to lock down.
     assert got_ranking == oracle["ranking"], (
         f"ranking mismatch:\n  got: {got_ranking}\n  exp: {oracle['ranking']}"
     )
