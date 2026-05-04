@@ -14,17 +14,15 @@ competing-risks survival analysis.
 
 > **Status: alpha.** API and internals may change before v1.0.
 > **Renamed from `crforest` in 0.3.1** — `pip install comprisk`,
-> `from comprisk import CompetingRiskForest` (see
-> [Migrating from crforest](#migrating-from-crforest)).
+> `from comprisk import CompetingRiskForest`.
 
 ## Highlights
 
 - **Forest today, regression next.** v0.3 ships the only native Python
-  competing-risks RSF (cause-specific log-rank splitting + composite CR
+  competing-risks RSF: cause-specific log-rank splitting + composite CR
   log-rank, Aalen-Johansen CIF, Nelson-Aalen CHF, Wolbers + Uno IPCW
   concordance, OOB Breiman VIMP, Ishwaran minimal-depth variable
-  selection). v0.4 adds Fine-Gray regression and the rest of the canonical
-  CR toolbox (see [Roadmap](#roadmap)).
+  selection. See the [Roadmap](#roadmap) for what v0.4 adds.
 - **10–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
   on real EHR data (CHF 14–22×, SEER 11.6×; full tables in
   [docs/benchmarks.md](docs/benchmarks.md)), with C ≈ 0.85 on both
@@ -133,12 +131,10 @@ format, prediction shapes, cross-validation, GPU, and migrating from rfSRC.
 
 ## Roadmap
 
-comprisk is positioned as a complete, Python-native CR toolkit. The 12-month
-scope is locked to competing-risks methods only — generalist survival
-methods (general Cox PH, AFT, parametric, deep-survival, Kaplan-Meier as
-a standalone API) are out of scope; use
-[lifelines](https://lifelines.readthedocs.io/) or
-[scikit-survival](https://scikit-survival.readthedocs.io/) for those.
+comprisk is intentionally CR-focused. For non-CR survival methods
+(general Cox PH, AFT, parametric, deep-survival, Kaplan-Meier as a
+standalone API), use [lifelines](https://lifelines.readthedocs.io/) or
+[scikit-survival](https://scikit-survival.readthedocs.io/).
 
 | Version  | Module                                                | Status               |
 |----------|-------------------------------------------------------|----------------------|
@@ -190,27 +186,6 @@ Full parameter list in [`src/comprisk/forest.py`](src/comprisk/forest.py);
 usage by task in [docs/quickstart.md](docs/quickstart.md). Two splitrules
 are available: `logrankCR` (composite competing-risks log-rank, default)
 and `logrank` (cause-specific).
-
-## Migrating from crforest
-
-comprisk **0.3.1** is the same codebase as crforest 0.3.0 under a new name
-and a slightly broader scope. Update one line:
-
-```python
-# before
-from crforest import CompetingRiskForest
-
-# after
-from comprisk import CompetingRiskForest
-```
-
-The package is otherwise identical — same `CompetingRiskForest` API,
-same `equivalence="rfsrc"` mode, same minimal-depth feature selection,
-same GPU preview, same metrics module. Pin to `comprisk>=0.3.1` (or
-`crforest==0.3.0` on the legacy name); the `crforest` PyPI package will
-emit a deprecation pointer and stop receiving new releases. The GitHub
-URL `github.com/sunnyadn/crforest` auto-redirects to
-`github.com/sunnyadn/comprisk`.
 
 ## Documentation
 
