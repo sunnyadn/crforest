@@ -38,3 +38,21 @@ def test_schema():
     assert len(df) == forest.n_features_in_
     # sorted ascending by mean_min_depth
     assert (df["mean_min_depth"].values[:-1] <= df["mean_min_depth"].values[1:]).all()
+
+
+def test_walker_flat_tree_finds_root_split():
+    from crforest._minimal_depth import _walk_min_depth
+    from crforest._tree_flat import FlatTree
+
+    forest = _fit(seed=0)
+    tree = forest.trees_[0]
+    # FlatTree path is the default
+    assert isinstance(tree, FlatTree)
+    res = _walk_min_depth(tree, n_features=forest.n_features_in_)
+    assert res.min_depth_per_feature.shape == (forest.n_features_in_,)
+    assert res.min_depth_per_feature.dtype == np.int32
+    # At least one feature must be the root split (depth 0)
+    assert res.min_depth_per_feature.min() == 0
+    # Every value is in [0, D_T + 1]
+    assert (res.min_depth_per_feature >= 0).all()
+    assert (res.min_depth_per_feature <= res.max_depth + 1).all()
