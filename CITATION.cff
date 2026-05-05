@@ -20,6 +20,9 @@ identifiers:
     value: 10.5281/zenodo.19876282
     description: Concept DOI (always resolves to latest version)
   - type: doi
+    value: 10.5281/zenodo.20032382
+    description: Version DOI (v0.3.1)
+  - type: doi
     value: 10.5281/zenodo.19984110
     description: Version DOI (v0.2.0)
 url: https://github.com/sunnyadn/comprisk
