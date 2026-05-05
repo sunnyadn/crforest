@@ -15,6 +15,7 @@ from comprisk._binning import apply_bins, fit_bin_edges
 from comprisk._gpu_detect import detect_cuda
 from comprisk._hist_tree import build_tree_hist, predict_tree_hist, predict_tree_hist_chf
 from comprisk._importance import _compute_importance_impl
+from comprisk._shap import shap_values as _shap_values_impl
 from comprisk._sklearn_compat import (
     Surv,
     is_structured_survival_y,
@@ -929,6 +930,40 @@ class CompetingRiskForest(BaseEstimator):
                 "feature_importances_ requires a prior compute_importance(X_eval, y_eval) call."
             )
         return self._feature_importances_cache
+
+    def shap_values(self, X, times=None):
+        """TreeSHAP values for cause-specific CIF.
+
+        Uses Lundberg et al. (2018) Algorithm 2 — exact polynomial-time
+        tree SHAP — adapted to competing-risk forests where each leaf value
+        is a ``(n_causes, n_times)`` CIF tensor.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Samples to explain.
+        times : array-like of float or None, default=None
+            Time points at which to evaluate SHAP.  If ``None``, the
+            model's ``unique_times_`` grid is used.
+
+        Returns
+        -------
+        shap_values : ndarray, shape (n_samples, n_features, n_times_out, n_causes)
+            Cause-specific CIF SHAP attributions.  For a fixed ``(time,
+            cause)`` slice this array is compatible with
+            ``shap.summary_plot``.
+        base_value : ndarray, shape (n_times_out, n_causes)
+            Expected CIF for the empty conditioning set (training-distribution
+            baseline), averaged across trees.
+
+            Additivity holds point-wise:
+
+            .. math::
+
+                sum_d shap_{s,d,t,c} + base_{t,c}
+                approx predict_cif(X_s)_{c,t}
+        """
+        return _shap_values_impl(self, X, times=times)
 
     def _importance_feature_names(self) -> list[str]:
         """Feature names for VIMP output; positional fallback when unset."""

@@ -96,6 +96,33 @@ vimp = forest.compute_importance(random_state=42)
 print(vimp.sort_values("composite_vimp", ascending=False).head())
 ```
 
+### TreeSHAP explanations
+
+Explain cause-specific CIF predictions with exact TreeSHAP (Lundberg 2018).
+Output shape is ``(n_samples, n_features, n_times, n_causes)``:
+
+```python
+shap, base = forest.shap_values(X[:10])
+# shap[0, :, 0, 0]  -> feature attributions for subject 0, first time, cause 1
+# base[0, 0]        -> expected CIF baseline for that (time, cause)
+
+# Additivity check: attributions + baseline reconstruct the CIF
+reconstructed = shap.sum(axis=1) + base  # (n, n_times, n_causes)
+assert np.allclose(reconstructed.transpose(0, 2, 1),
+                   forest.predict_cif(X[:10]))
+
+# Rank features by mean absolute SHAP (global importance)
+mean_abs = np.abs(shap).mean(axis=(0, 2, 3))
+top_features = np.argsort(mean_abs)[::-1][:5]
+
+# Slice for a fixed (time, cause) — compatible with shap.summary_plot
+shap_slice = shap[:, :, -1, 0]   # last timepoint, cause 1  (n, p)
+```
+
+TreeSHAP runs on the fitted model; it is downstream of variable selection.
+Wall time is ``< 5 min`` for n = 1k, p = 58, ntree = 100, n_times = 10 on
+commodity hardware (parallelised across trees via ``n_jobs``).
+
 ### Variable selection
 
 Rank features by Ishwaran's minimal-depth criterion and apply the forest-
