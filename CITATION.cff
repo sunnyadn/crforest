@@ -14,7 +14,7 @@ abstract: >-
 type: software
 version: 0.3.1
 date-released: 2026-05-04
-doi: 10.5281/zenodo.19984110
+doi: 10.5281/zenodo.19876282
 identifiers:
   - type: doi
     value: 10.5281/zenodo.19876282
