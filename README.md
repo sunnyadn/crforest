@@ -119,9 +119,14 @@ top_features = np.argsort(mean_abs)[::-1][:5]
 shap_slice = shap[:, :, -1, 0]   # last timepoint, cause 1  (n, p)
 ```
 
-TreeSHAP runs on the fitted model; it is downstream of variable selection.
-Wall time is ``< 5 min`` for n = 1k, p = 58, ntree = 100, n_times = 10 on
-commodity hardware (parallelised across trees via ``n_jobs``).
+Backed by Lundberg (2018) Algorithm 2; bit-exact to ``shap.TreeExplainer``
+at any fixed ``(cause, time)`` slice. Wall time scales linearly with
+``n_explain`` and ``n_times`` — pass a focused ``times=`` grid (clinical
+horizons) rather than the default full event-time grid.
+
+Indicative wall (10-core commodity machine, p = 58, ntree = 100, n_times = 10):
+~40 s at n_train = 10k, n_explain = 200; ~3.5 min at n_train = 10k, n_explain = 1000.
+Thread parallelism saturates near ``n_jobs ≈ 4`` (memory-bandwidth bound).
 
 ### Variable selection
 

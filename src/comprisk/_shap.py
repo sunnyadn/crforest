@@ -1,17 +1,9 @@
 """TreeSHAP for cause-specific CIF on comprisk tree ensembles.
 
 Implements Lundberg, Erion & Lee (2018), *Consistent Individualized Feature
-Attribution for Tree Ensembles* (arXiv:1802.03888), Algorithm 1 (EXPVALUE).
-
-The exact O(L·D²) Algorithm 2 will be added in a follow-up for production
-scale.  Algorithm 1 is correct and passes the additivity invariant; its
-complexity is O(2^D · L) per tree per sample, which is acceptable for
-typical comprisk tree depths (D ~= 8-12 on realistic data due to
-min_samples_leaf limiting leaf count).
-
-Leaf values are generalised from scalars to ``(n_causes, n_times)`` tensors.
-Because the SHAP algorithm is linear in the leaf value, the vectorisation over
-cause x time is direct.
+Attribution for Tree Ensembles* (arXiv:1802.03888), Algorithm 2 (O(L·D²)).
+Leaf values are generalised from scalars to ``(n_causes, n_times)`` tensors;
+SHAP is linear in the leaf value so the cause x time vectorisation is direct.
 """
 
 from __future__ import annotations
@@ -19,7 +11,6 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
-from numba import njit
 from sklearn.utils.validation import check_is_fitted
 
 from comprisk._binning import apply_bins
@@ -118,243 +109,6 @@ def _compute_node_covers(
 
     visit(0)
     return covers
-
-
-# ---------------------------------------------------------------------------
-# Numba-accelerated EXPVALUE (Algorithm 1 core)
-# ---------------------------------------------------------------------------
-
-
-@njit(cache=True, nogil=True)
-def _expvalue_njit(
-    x,
-    S_mask,
-    features,
-    split_values,
-    left_children,
-    right_children,
-    is_leaf_flags,
-    leaf_idx_of_node,
-    leaf_table,
-    covers,
-    parent,
-    results,
-    node,
-):
-    """EXPVALUE — iterative with parent-propagation, numba-jitted.
-
-    ``results`` is a pre-allocated ``(n_nodes, n_causes, n_times)`` scratch
-    array that is overwritten in-place.  ``parent`` is a pre-computed
-    ``(n_nodes,)`` parent-pointer array (-1 for root).
-    """
-    n_causes = leaf_table.shape[1]
-    n_times = leaf_table.shape[2]
-
-    max_stack = 128
-    stack_n = np.empty(max_stack, dtype=np.int64)
-    stack_state = np.empty(max_stack, dtype=np.int64)
-    sp = 0
-
-    stack_n[sp] = node
-    stack_state[sp] = 0
-    sp += 1
-
-    while sp > 0:
-        sp -= 1
-        cur = stack_n[sp]
-        state = stack_state[sp]
-
-        if state == 1:
-            lc = left_children[cur]
-            rc = right_children[cur]
-            cover_c = covers[cur]
-            for c in range(n_causes):
-                for t in range(n_times):
-                    results[cur, c, t] = (
-                        covers[lc] * results[lc, c, t] + covers[rc] * results[rc, c, t]
-                    ) / cover_c
-            # Propagate up through single-child chain
-            p = parent[cur]
-            while p >= 0:
-                feat = features[p]
-                if S_mask & (1 << feat):
-                    child = left_children[p] if x[feat] <= split_values[p] else right_children[p]
-                    for c in range(n_causes):
-                        for t in range(n_times):
-                            results[p, c, t] = results[child, c, t]
-                    p = parent[p]
-                else:
-                    break
-            continue
-
-        if is_leaf_flags[cur]:
-            li = leaf_idx_of_node[cur]
-            for c in range(n_causes):
-                for t in range(n_times):
-                    results[cur, c, t] = leaf_table[li, c, t]
-            # Propagate up through single-child chain
-            p = parent[cur]
-            while p >= 0:
-                feat = features[p]
-                if S_mask & (1 << feat):
-                    child = left_children[p] if x[feat] <= split_values[p] else right_children[p]
-                    for c in range(n_causes):
-                        for t in range(n_times):
-                            results[p, c, t] = results[child, c, t]
-                    p = parent[p]
-                else:
-                    break
-            continue
-
-        feat = features[cur]
-        if S_mask & (1 << feat):
-            child = left_children[cur] if x[feat] <= split_values[cur] else right_children[cur]
-            stack_n[sp] = child
-            stack_state[sp] = 0
-            sp += 1
-        else:
-            lc = left_children[cur]
-            rc = right_children[cur]
-            stack_n[sp] = cur
-            stack_state[sp] = 1
-            sp += 1
-            stack_n[sp] = rc
-            stack_state[sp] = 0
-            sp += 1
-            stack_n[sp] = lc
-            stack_state[sp] = 0
-            sp += 1
-
-    return results[node]
-
-
-@njit(cache=True, nogil=True)
-def _shap_tree_njit(
-    x,
-    features,
-    split_values,
-    left_children,
-    right_children,
-    is_leaf_flags,
-    leaf_idx_of_node,
-    leaf_table,
-    covers,
-    n_features,
-    phi,
-):
-    """Algorithm 1 TreeSHAP — numba-jitted subset enumeration + cached EXPVALUE."""
-    # Find features on the decision path for x
-    path_features = np.empty(features.shape[0], dtype=np.int64)
-    path_len = 0
-    node = 0
-    while not is_leaf_flags[node]:
-        feat = features[node]
-        path_features[path_len] = feat
-        path_len += 1
-        node = left_children[node] if x[feat] <= split_values[node] else right_children[node]
-
-    # Deduplicate
-    unique_feats = np.empty(path_len, dtype=np.int64)
-    n_unique = 0
-    for i in range(path_len):
-        feat = path_features[i]
-        seen = False
-        for j in range(n_unique):
-            if unique_feats[j] == feat:
-                seen = True
-                break
-        if not seen:
-            unique_feats[n_unique] = feat
-            n_unique += 1
-
-    D = n_unique
-    n_causes = leaf_table.shape[1]
-    n_times = leaf_table.shape[2]
-
-    if D == 0:
-        return
-
-    # Pre-compute parent pointers and scratch array (re-used across EXPVALUE calls)
-    n_nodes = features.shape[0]
-    parent = np.full(n_nodes, -1, dtype=np.int64)
-    for i in range(n_nodes):
-        if not is_leaf_flags[i]:
-            parent[left_children[i]] = i
-            parent[right_children[i]] = i
-    results = np.empty((n_nodes, n_causes, n_times), dtype=np.float64)
-
-    # Cache EXPVALUE for all subsets
-    n_masks = 1 << D
-    cache = np.empty((n_masks, n_causes, n_times), dtype=np.float64)
-    for mask in range(n_masks):
-        S_mask = 0
-        for j in range(D):
-            if mask & (1 << j):
-                S_mask |= 1 << unique_feats[j]
-        cache[mask] = _expvalue_njit(
-            x,
-            S_mask,
-            features,
-            split_values,
-            left_children,
-            right_children,
-            is_leaf_flags,
-            leaf_idx_of_node,
-            leaf_table,
-            covers,
-            parent,
-            results,
-            0,
-        )
-
-    # Compute SHAP for each unique feature
-    for i in range(D):
-        feat = unique_feats[i]
-        feat_mask = 1 << i
-        # Build list of other features
-        others = np.empty(D - 1, dtype=np.int64)
-        n_others = 0
-        for j in range(D):
-            if j != i:
-                others[n_others] = j
-                n_others += 1
-
-        n_subsets = 1 << n_others
-        for mask in range(n_subsets):
-            S_mask_idx = 0
-            for j in range(n_others):
-                if mask & (1 << j):
-                    S_mask_idx |= 1 << others[j]
-            s = 0
-            _tmp = S_mask_idx
-            while _tmp:
-                s += _tmp & 1
-                _tmp >>= 1
-            # inline factorial (D <= ~15)
-            f_s = 1.0
-            for _fi in range(2, s + 1):
-                f_s *= _fi
-            f_dsm1 = 1.0
-            for _fi in range(2, D - s):
-                f_dsm1 *= _fi
-            f_d = 1.0
-            for _fi in range(2, D + 1):
-                f_d *= _fi
-            weight = f_s * f_dsm1 / f_d
-            diff = cache[S_mask_idx | feat_mask] - cache[S_mask_idx]
-            for c in range(n_causes):
-                for t in range(n_times):
-                    phi[feat, c, t] += weight * diff[c, t]
-
-
-def _shap_tree_single(
-    flat: FlatTree,
-    x: np.ndarray,
-    n_features: int,
-    covers: np.ndarray,
-) -> np.ndarray:
-    """Fast TreeSHAP — dispatches to numba-jitted Algorithm 2 (O(L·D²))."""
-    return shap_tree_single_alg2(flat, x, n_features, covers)
 
 
 # ---------------------------------------------------------------------------
@@ -478,7 +232,7 @@ def _shap_tree_samples(
     n_causes = flat.leaf_table.shape[1]
     phi_tree = np.zeros((n_samples, n_features, n_times_out, n_causes), dtype=np.float64)
     for si in range(n_samples):
-        phi = _shap_tree_single(flat, X_batch[si], n_features, covers)
+        phi = shap_tree_single_alg2(flat, X_batch[si], n_features, covers)
         if time_projection is not None:
             phi = time_projection(phi)
         phi_tree[si] = phi.transpose(0, 2, 1)

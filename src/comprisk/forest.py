@@ -934,9 +934,9 @@ class CompetingRiskForest(BaseEstimator):
     def shap_values(self, X, times=None):
         """TreeSHAP values for cause-specific CIF.
 
-        Uses Lundberg et al. (2018) Algorithm 2 — exact polynomial-time
-        tree SHAP — adapted to competing-risk forests where each leaf value
-        is a ``(n_causes, n_times)`` CIF tensor.
+        Uses exact polynomial-time TreeSHAP (Lundberg et al. 2018), adapted
+        to competing-risk forests where each leaf value is a
+        ``(n_causes, n_times)`` CIF tensor.
 
         Parameters
         ----------
