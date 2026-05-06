@@ -22,7 +22,7 @@ competing-risks survival analysis.
   competing-risks RSF: cause-specific log-rank splitting + composite CR
   log-rank, Aalen-Johansen CIF, Nelson-Aalen CHF, Wolbers + Uno IPCW
   concordance, OOB Breiman VIMP, Ishwaran minimal-depth variable
-  selection. See the [Roadmap](#roadmap) for what v0.4 adds.
+  selection, exact TreeSHAP. See the [Roadmap](#roadmap) for what v0.4 adds.
 - **10–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
   on real EHR data (CHF 14–22×, SEER 11.6×; full tables in
   [docs/benchmarks.md](docs/benchmarks.md)), with C ≈ 0.85 on both
@@ -81,78 +81,30 @@ event = rng.choice([0, 1, 2], size=n, p=[0.4, 0.4, 0.2])  # 0 = censored
 # Fit. Defaults: n_estimators=100, max_features="sqrt", logrankCR, n_jobs=-1.
 forest = CompetingRiskForest(n_estimators=100, random_state=42).fit(X, time, event)
 
-# Per-subject risk score for cause 1 (suitable for Wolbers C-index).
-risk = forest.predict_risk(X[:5], cause=1)
-
 # Aalen-Johansen cumulative incidence over the forest's chosen time grid.
 cif = forest.predict_cif(X[:5])                       # (5, n_causes, n_times)
-cif_at = forest.predict_cif(X[:5], times=[1.0, 2.0, 5.0])
 
 # Cause-specific Wolbers concordance.
 print("C-index, cause 1:", forest.score(X, time, event, cause=1))
+```
 
-# OOB permutation VIMP, scored with Uno IPCW.
+### Explainability and feature selection
+
+```python
+# OOB permutation importance (Uno IPCW-scored).
 vimp = forest.compute_importance(random_state=42)
-print(vimp.sort_values("composite_vimp", ascending=False).head())
+
+# Ishwaran minimal-depth variable selection.
+selected = forest.minimal_depth().query("selected")["feature"].tolist()
+
+# Exact TreeSHAP attributions (Lundberg 2018, Algorithm 2).
+shap, base = forest.shap_values(X[:10])               # (n, p, n_times, n_causes)
 ```
 
-### TreeSHAP explanations
-
-Explain cause-specific CIF predictions with exact TreeSHAP (Lundberg 2018).
-Output shape is ``(n_samples, n_features, n_times, n_causes)``:
-
-```python
-shap, base = forest.shap_values(X[:10])
-# shap[0, :, 0, 0]  -> feature attributions for subject 0, first time, cause 1
-# base[0, 0]        -> expected CIF baseline for that (time, cause)
-
-# Additivity check: attributions + baseline reconstruct the CIF
-reconstructed = shap.sum(axis=1) + base  # (n, n_times, n_causes)
-assert np.allclose(reconstructed.transpose(0, 2, 1),
-                   forest.predict_cif(X[:10]))
-
-# Rank features by mean absolute SHAP (global importance)
-mean_abs = np.abs(shap).mean(axis=(0, 2, 3))
-top_features = np.argsort(mean_abs)[::-1][:5]
-
-# Slice for a fixed (time, cause) — compatible with shap.summary_plot
-shap_slice = shap[:, :, -1, 0]   # last timepoint, cause 1  (n, p)
-```
-
-Backed by Lundberg (2018) Algorithm 2; bit-exact to ``shap.TreeExplainer``
-at any fixed ``(cause, time)`` slice. Wall time scales linearly with
-``n_explain`` and ``n_times`` — pass a focused ``times=`` grid (clinical
-horizons) rather than the default full event-time grid.
-
-Indicative wall (10-core commodity machine, p = 58, ntree = 100, n_times = 10):
-~40 s at n_train = 10k, n_explain = 200; ~3.5 min at n_train = 10k, n_explain = 1000.
-Thread parallelism saturates near ``n_jobs ≈ 4`` (memory-bandwidth bound).
-
-### Variable selection
-
-Rank features by Ishwaran's minimal-depth criterion and apply the forest-
-averaged null-distribution threshold from Ishwaran et al. (2010, JASA,
-Theorem 1 + Section 3):
-
-```python
-forest = CompetingRiskForest(n_estimators=200, random_state=0).fit(X, time, event)
-vs = forest.minimal_depth()
-selected = vs.loc[vs["selected"], "feature"].tolist()
-```
-
-Variables with mean minimal depth below the threshold are flagged as
-informative. Pass `return_extra=True` to additionally inspect quartiles
-and per-feature usage rates across trees.
-
-Note on rfSRC compatibility: this implements the paper's forest-averaged
-threshold (Section 3); `randomForestSRC::max.subtree` defaults to a
-tree-averaged threshold, so the threshold *scalar* differs. Per-feature
-mean minimal depth values are bit-equivalent under matched fit config
-(`equivalence='rfsrc', bootstrap=False, min_samples_split=2*nodesize,
-min_samples_leaf=1, max_depth=None`).
-
-See [docs/quickstart.md](docs/quickstart.md) for the full walkthrough — data
-format, prediction shapes, cross-validation, GPU, and migrating from rfSRC.
+Detailed walkthroughs — additivity checks, global SHAP importance, sklearn-
+compatible slicing, performance caveats, rfSRC threshold compatibility — in
+[docs/quickstart.md](docs/quickstart.md), which also covers data format,
+prediction shapes, cross-validation, GPU, and rfSRC migration.
 
 > **scikit-learn drop-in.** `CompetingRiskForest` is a real sklearn
 > estimator (`BaseEstimator`, `clone()`-friendly, picklable).

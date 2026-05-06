@@ -204,7 +204,62 @@ forest = CompetingRiskForest(n_estimators=100, random_state=42).fit(X_train, t_t
 vimp_held = forest.compute_importance(X_eval, y_eval, n_repeats=5, random_state=42)
 ```
 
-## 6. Performance levers
+## 6. Variable selection (minimal depth)
+
+Rank features by Ishwaran's minimal-depth criterion and apply the forest-
+averaged null-distribution threshold from Ishwaran et al. (2010, JASA,
+Theorem 1 + Section 3):
+
+```python
+forest = CompetingRiskForest(n_estimators=200, random_state=0).fit(X, time, event)
+vs = forest.minimal_depth()
+selected = vs.loc[vs["selected"], "feature"].tolist()
+```
+
+Variables with mean minimal depth below the threshold are flagged as
+informative. Pass `return_extra=True` to additionally inspect quartiles
+and per-feature usage rates across trees.
+
+Note on rfSRC compatibility: this implements the paper's forest-averaged
+threshold (Section 3); `randomForestSRC::max.subtree` defaults to a
+tree-averaged threshold, so the threshold *scalar* differs. Per-feature
+mean minimal depth values are bit-equivalent under matched fit config
+(`equivalence='rfsrc', bootstrap=False, min_samples_split=2*nodesize,
+min_samples_leaf=1, max_depth=None`).
+
+## 7. TreeSHAP explanations
+
+Explain cause-specific CIF predictions with exact TreeSHAP (Lundberg 2018).
+Output shape is ``(n_samples, n_features, n_times, n_causes)``:
+
+```python
+shap, base = forest.shap_values(X[:10])
+# shap[0, :, 0, 0]  -> feature attributions for subject 0, first time, cause 1
+# base[0, 0]        -> expected CIF baseline for that (time, cause)
+
+# Additivity check: attributions + baseline reconstruct the CIF
+reconstructed = shap.sum(axis=1) + base  # (n, n_times, n_causes)
+assert np.allclose(reconstructed.transpose(0, 2, 1),
+                   forest.predict_cif(X[:10]))
+
+# Rank features by mean absolute SHAP (global importance)
+mean_abs = np.abs(shap).mean(axis=(0, 2, 3))
+top_features = np.argsort(mean_abs)[::-1][:5]
+
+# Slice for a fixed (time, cause) — compatible with shap.summary_plot
+shap_slice = shap[:, :, -1, 0]   # last timepoint, cause 1  (n, p)
+```
+
+Backed by Lundberg (2018) Algorithm 2; bit-exact to ``shap.TreeExplainer``
+at any fixed ``(cause, time)`` slice. Wall time scales linearly with
+``n_explain`` and ``n_times`` — pass a focused ``times=`` grid (clinical
+horizons) rather than the default full event-time grid.
+
+Indicative wall (10-core commodity machine, p = 58, ntree = 100, n_times = 10):
+~40 s at n_train = 10k, n_explain = 200; ~3.5 min at n_train = 10k, n_explain = 1000.
+Thread parallelism saturates near ``n_jobs ≈ 4`` (memory-bandwidth bound).
+
+## 8. Performance levers
 
 | Lever | Default | Rule of thumb |
 |---|---|---|
@@ -218,7 +273,7 @@ For repeated fits at the same n / p / ntree, the histogram split kernel
 benefits from numba caching after the first call — second-run wall is a
 useful "warm" baseline.
 
-## 7. GPU preview (optional)
+## 9. GPU preview (optional)
 
 ```bash
 pip install "comprisk[gpu]"   # cupy-cuda12x + cuda runtime
@@ -242,7 +297,7 @@ flag for benchmarking and for users with low-p problems.
 `device="cuda"` is incompatible with `equivalence="rfsrc"` /
 `rng_mode="rfsrc_aligned"`.
 
-## 8. Migrating from rfSRC
+## 10. Migrating from rfSRC
 
 `equivalence="rfsrc"` ports randomForestSRC's per-tree mtry/nsplit RNG
 stream + bootstrap-by-user inbag exposure so paired fits are bit-equivalent
