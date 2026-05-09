@@ -4,13 +4,14 @@
 [![CI](https://github.com/sunnyadn/comprisk/actions/workflows/ci.yml/badge.svg)](https://github.com/sunnyadn/comprisk/actions/workflows/ci.yml)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19876282-blue)](https://doi.org/10.5281/zenodo.19876282)
 
-**comprisk** — a Python toolkit for competing risks. v0.3 ships a
-scalable, scikit-learn-compatible competing-risks random survival forest;
-v0.4 adds Fine-Gray subdistribution-hazard regression, a stand-alone
-Aalen-Johansen cumulative-incidence estimator, Gray's K-sample test, and
-cause-specific Cox PH (see [Roadmap](#roadmap)). Designed to remove the
-Python → R workflow split that applied researchers currently endure for
-competing-risks survival analysis.
+**comprisk** — a Python toolkit for competing risks. Ships a scalable,
+scikit-learn-compatible competing-risks random survival forest plus the
+three canonical regression / non-parametric methods clinical researchers
+actually need: Fine-Gray subdistribution-hazard regression, a stand-alone
+Aalen-Johansen cumulative-incidence estimator with cmprsk-parity
+variance, and cause-specific Cox PH (see [Roadmap](#roadmap)). Designed
+to remove the Python → R workflow split that applied researchers
+currently endure for competing-risks survival analysis.
 
 > **Status: alpha.** API and internals may change before v1.0.
 > **Renamed from `crforest` in 0.3.1** — `pip install comprisk`,
@@ -18,11 +19,17 @@ competing-risks survival analysis.
 
 ## Highlights
 
-- **Forest today, regression next.** v0.3 ships the only native Python
-  competing-risks RSF: cause-specific log-rank splitting + composite CR
-  log-rank, Aalen-Johansen CIF, Nelson-Aalen CHF, Wolbers + Uno IPCW
-  concordance, OOB Breiman VIMP, Ishwaran minimal-depth variable
-  selection, exact TreeSHAP. See the [Roadmap](#roadmap) for what v0.4 adds.
+- **The four canonical CR methods, native Python.** `FineGrayRegression`
+  matches `R cmprsk::crr()` β̂ to floating-point noise (max |Δβ| = 1.4e-15
+  on three reference datasets); `robust_se=True` returns the Geskus
+  cluster sandwich agreeing with cmprsk's IPCW-corrected SE to ~3 digits.
+  `CumulativeIncidence` reproduces `cmprsk::cuminc()` to 1e-9 across CIF
+  and variance. `gray_test` reproduces `cmprsk::cuminc()$Tests` to 1e-14.
+  `CauseSpecificCox` matches `survival::coxph(method="breslow")` to 1e-9.
+- **Only native-Python competing-risks RSF.** Cause-specific log-rank
+  splitting + composite CR log-rank, Aalen-Johansen CIF, Nelson-Aalen CHF,
+  Wolbers + Uno IPCW concordance, OOB Breiman VIMP, Ishwaran minimal-depth
+  variable selection, exact TreeSHAP.
 - **10–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
   on real EHR data (CHF 14–22×, SEER 11.6×; full tables in
   [docs/benchmarks.md](docs/benchmarks.md)), with C ≈ 0.85 on both
@@ -101,6 +108,33 @@ selected = forest.minimal_depth().query("selected")["feature"].tolist()
 shap, base = forest.shap_values(X[:10])               # (n, p, n_times, n_causes)
 ```
 
+### Fine-Gray, Aalen-Johansen, Gray's test, and cause-specific Cox
+
+```python
+from comprisk import (
+    FineGrayRegression, CumulativeIncidence, CauseSpecificCox, gray_test,
+)
+
+# Fine-Gray subdistribution-hazard regression — matches R cmprsk::crr()
+# β̂ to floating-point noise. robust_se=True gives the Geskus cluster
+# sandwich (matches cmprsk's IPCW-corrected SE to ~3 digits).
+fg = FineGrayRegression(cause=1, robust_se=True).fit(X, time=time, event=event)
+print(fg.coef_, fg.se_)
+F = fg.predict_cumulative_incidence(X[:5])            # (5, n_event_times)
+
+# Non-parametric Aalen-Johansen CIF (cmprsk::cuminc parity, optional groups).
+ci = CumulativeIncidence().fit(time=time, event=event, group=group_var)
+est, var = ci.timepoints([1.0, 5.0, 10.0])            # (n_curves, 3)
+
+# Gray's K-sample test for CIFs — matches cmprsk::cuminc()$Tests to 1e-14.
+result = gray_test(time, event, group_var, cause=1)
+print(result.stat, result.pvalue, result.df)
+
+# Cause-specific Cox PH — competing events censored at t_j.
+# Matches survival::coxph(method="breslow") to 1e-9.
+cs = CauseSpecificCox(cause=1).fit(X, time=time, event=event)
+```
+
 Detailed walkthroughs — additivity checks, global SHAP importance, sklearn-
 compatible slicing, performance caveats, rfSRC threshold compatibility — in
 [docs/quickstart.md](docs/quickstart.md), which also covers data format,
@@ -122,11 +156,11 @@ standalone API), use [lifelines](https://lifelines.readthedocs.io/) or
 
 | Version  | Module                                                | Status               |
 |----------|-------------------------------------------------------|----------------------|
-| **v0.3** | `CompetingRiskForest` (CR-RSF)                        | Shipped              |
-| v0.4     | `FineGrayRegression` (subdistribution hazard)         | Planned (Q3-Q4 2026) |
-| v0.4     | `CumulativeIncidence` (stand-alone Aalen-Johansen)    | Planned (Q3-Q4 2026) |
-| v0.4     | `gray_test` (Gray's K-sample log-rank)                | Planned (Q3-Q4 2026) |
-| v0.4     | `CauseSpecificCox` (CR-aware censoring)               | Planned (Q3-Q4 2026) |
+| v0.3     | `CompetingRiskForest` (CR-RSF)                        | Shipped              |
+| **v0.4** | `FineGrayRegression` (subdistribution hazard)         | Shipped              |
+| **v0.4** | `CumulativeIncidence` (stand-alone Aalen-Johansen)    | Shipped              |
+| **v0.4** | `gray_test` (Gray's K-sample log-rank)                | Shipped              |
+| **v0.4** | `CauseSpecificCox` (CR-aware censoring)               | Shipped              |
 | v1.0     | API freeze + JMLR MLOSS submission                    | Planned              |
 | v1.1     | Full GPU rewrite                                      | Planned              |
 

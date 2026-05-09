@@ -6,6 +6,12 @@ import comprisk
 def test_top_level_exports():
     assert hasattr(comprisk, "CompetingRiskForest")
     assert hasattr(comprisk, "concordance_index_cr")
+    # v0.4 regression / non-parametric methods
+    assert hasattr(comprisk, "FineGrayRegression")
+    assert hasattr(comprisk, "CumulativeIncidence")
+    assert hasattr(comprisk, "CauseSpecificCox")
+    assert hasattr(comprisk, "gray_test")
+    assert hasattr(comprisk, "GrayTestResult")
 
 
 def test_private_modules_not_in_all():
@@ -19,6 +25,14 @@ def test_public_symbols_in_all():
     assert "CompetingRiskForest" in comprisk.__all__
     assert "concordance_index_cr" in comprisk.__all__
     assert "__version__" in comprisk.__all__
+    for name in (
+        "FineGrayRegression",
+        "CumulativeIncidence",
+        "CauseSpecificCox",
+        "gray_test",
+        "GrayTestResult",
+    ):
+        assert name in comprisk.__all__
 
 
 def test_n_jobs_stored_on_estimator():

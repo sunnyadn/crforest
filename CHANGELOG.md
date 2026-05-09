@@ -11,6 +11,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `from crforest import …` was the supported form for those versions. See
 > the 0.3.1 entry below for the migration recipe.
 
+## [0.4.0] — 2026-05-09
+
+Adds the four canonical CR regression / non-parametric methods announced
+in the v0.4 roadmap: Fine-Gray subdistribution-hazard regression,
+Aalen-Johansen cumulative incidence with cmprsk-parity variance, Gray's
+K-sample test, and cause-specific Cox PH. Closes SUN-45.
+
+### Added
+
+- `FineGrayRegression` — proportional subdistribution-hazards regression
+  (Fine & Gray 1999) via IPCW-weighted Breslow partial likelihood with
+  Newton-Raphson + Armijo line search. Mathematically equivalent to
+  Geskus (2011)'s expanded-data + weighted-Cox formulation but without
+  the row-blowup. Matches `R cmprsk::crr()` defaults to floating-point
+  noise on three reference datasets (synth, pbc, follic): max |Δβ| =
+  1.4e-15, max |Δlog-lik| = 6.6e-12.
+- `FineGrayRegression(robust_se=True)` returns a per-subject score-residual
+  cluster sandwich; agrees with `cmprsk`'s IPCW-corrected sandwich SE to
+  ~3 digits per Geskus 2011 (Therneau, R `survival::finegray` docs).
+  Worst-case observed Δse = 4.07e-04 (within the 1e-3 acceptance bar).
+- `FineGrayRegression.predict_cumulative_incidence(X, times=)` — predicted
+  CIF curves under the cmprsk closed-form
+  `F(t|x) = 1 - exp(-Λ̂_0(t) * exp(x'β))`.
+- `CumulativeIncidence` — non-parametric Aalen-Johansen estimator
+  (Aalen 1978; Aalen & Johansen 1978) with optional group stratification
+  and the Pepe (1991) Greenwood-corrected pointwise variance.
+  Independent implementation; bit-identical (atol 1e-9) to
+  `R cmprsk::cuminc()` on grouped synthetic and follic.
+- `CauseSpecificCox` — standard Cox PH on `Surv(time, event == cause)`
+  with cause-specific censoring of competing events. Matches
+  `R survival::coxph(method="breslow")` to 1e-9 on pbc and follic.
+- `gray_test` — Gray's K-sample test for cumulative incidence functions
+  (Gray 1988). Independent implementation derived from the paper plus
+  counting-process martingale theory; matches `R cmprsk::cuminc()$Tests`
+  (statistic and p-value) to floating-point noise on grouped synthetic
+  and follic-by-clinstg fixtures.
+- Test fixtures: `tests/cross_check_cmprsk.R` (R-side reference
+  generator), `tests/fixtures/cmprsk_*`, `tests/fixtures/cuminc_*`,
+  `tests/fixtures/csc_*`, `tests/fixtures/gray_*` (committed CSV
+  reference fits).
+
 ## [0.3.1] — 2026-05-04
 
 Project rename and reposition. Code is identical to 0.3.0; this release

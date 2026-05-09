@@ -7,13 +7,15 @@ abstract: >-
   compatible API, Aalen-Johansen CIF and Nelson-Aalen CHF outputs, cause-
   specific Wolbers and Uno IPCW concordance metrics, OOB Breiman
   permutation variable importance, Ishwaran minimal-depth variable
-  selection, and bit-identical reproducibility with randomForestSRC. The
-  v0.4 roadmap adds Fine-Gray subdistribution-hazard regression, a stand-
-  alone Aalen-Johansen cumulative-incidence estimator, Gray's K-sample
-  test, and cause-specific Cox PH. Renamed from `crforest` in 0.3.1.
+  selection, and bit-identical reproducibility with randomForestSRC. As
+  of v0.4 also ships Fine-Gray subdistribution-hazard regression
+  (cmprsk::crr-parity β̂), a stand-alone Aalen-Johansen cumulative-
+  incidence estimator (cmprsk::cuminc-parity variance), Gray's K-sample
+  test (cmprsk::cuminc Tests-parity), and cause-specific Cox PH
+  (survival::coxph-parity). Renamed from `crforest` in 0.3.1.
 type: software
-version: 0.3.1
-date-released: 2026-05-04
+version: 0.4.0
+date-released: 2026-05-09
 doi: 10.5281/zenodo.19876282
 identifiers:
   - type: doi
