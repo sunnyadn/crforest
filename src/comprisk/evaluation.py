@@ -1,9 +1,12 @@
-"""Competing-risks evaluation: time-dep AUC + Brier/IBS + iAUC.
+"""Competing-risks evaluation: time-dep AUC + Brier/IBS + iAUC + calibration.
 
 Modelled on R ``riskRegression::Score`` for competing risks. One entry
 point :func:`score_cr` accepts a dict of model name to (n_test,
 n_eval_times) CIF probability matrix and returns per-(model, time) AUC
 and Brier with optional bootstrap CIs, plus integrated AUC and IBS.
+:func:`calibration_cr` produces tidy quantile-decile calibration plot
+data — predicted bin midpoint, Aalen-Johansen empirical CIF on bin
+subjects, and per-bin Wilson 95% CI — to feed a facet_wrap-style plot.
 
 References
 ----------
@@ -20,15 +23,17 @@ event times." *Biometrical Journal* 48(6): 1029-1040.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+from scipy.stats import norm
 
+from comprisk.cumulative_incidence import CumulativeIncidence
 from comprisk.metrics import _ghat_minus
 
-__all__ = ["ScoreResult", "score_cr"]
+__all__ = ["ScoreResult", "calibration_cr", "score_cr"]
 
 
 @dataclass
@@ -46,12 +51,31 @@ class ScoreResult:
         Columns ``model, iAUC, lower, upper``.
     ibs : pandas.DataFrame
         Columns ``model, IBS, lower, upper``.
+    calibration : pandas.DataFrame
+        Quantile-decile calibration plot data, populated when
+        ``score_cr(..., calibration_at=...)`` is supplied. Empty
+        DataFrame with the canonical schema otherwise. Columns:
+        ``model, times, predicted_decile, observed_freq, lower_ci,
+        upper_ci, bin_n``.
     """
 
     auc: pd.DataFrame
     brier: pd.DataFrame
     iauc: pd.DataFrame
     ibs: pd.DataFrame
+    calibration: pd.DataFrame = field(
+        default_factory=lambda: pd.DataFrame(
+            columns=[
+                "model",
+                "times",
+                "predicted_decile",
+                "observed_freq",
+                "lower_ci",
+                "upper_ci",
+                "bin_n",
+            ]
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -274,6 +298,178 @@ def _bootstrap_one(
 
 
 # ---------------------------------------------------------------------------
+# Quantile-decile calibration (Phase 2)
+# ---------------------------------------------------------------------------
+
+
+_CALIB_COLS = [
+    "model",
+    "times",
+    "predicted_decile",
+    "observed_freq",
+    "lower_ci",
+    "upper_ci",
+    "bin_n",
+]
+
+
+def _wilson_ci(p_hat: float, n: int, z: float) -> tuple[float, float]:
+    """Wilson score interval for a binomial proportion.
+
+    Implements the textbook formula
+    ``(p̂ + z²/2n ± z · √((p̂(1-p̂) + z²/4n)/n)) / (1 + z²/n)``.
+    Returns ``(NaN, NaN)`` when ``n == 0``. Result is clipped to
+    ``[0, 1]`` to guard against tiny negative excursions from
+    floating-point noise on near-degenerate inputs.
+    """
+    if n <= 0:
+        return float("nan"), float("nan")
+    z2 = z * z
+    denom = 1.0 + z2 / n
+    center = (p_hat + z2 / (2.0 * n)) / denom
+    half = z * np.sqrt((p_hat * (1.0 - p_hat) + z2 / (4.0 * n)) / n) / denom
+    return max(0.0, center - half), min(1.0, center + half)
+
+
+def _quantile_bins(p: np.ndarray, n_bins: int) -> np.ndarray:
+    """Assign each entry of ``p`` to a quantile-decile bin in ``0..n_bins-1``.
+
+    Mirrors R's ``cut(quantile(p, probs=seq(0, 1, length.out=q+1)),
+    include.lowest=TRUE)``: bins are right-closed except the leftmost
+    which is closed on both ends.
+    """
+    breaks = np.quantile(p, np.linspace(0.0, 1.0, n_bins + 1))
+    inner = breaks[1:-1]
+    return np.digitize(p, inner, right=True).astype(np.intp)
+
+
+def _calibration_one_model(
+    name: str,
+    probs: np.ndarray,
+    test_time: np.ndarray,
+    test_event: np.ndarray,
+    eval_times: np.ndarray,
+    cause: int,
+    n_bins: int,
+    z: float,
+) -> list[dict]:
+    """Per-(time, bin) calibration rows for one model."""
+    rows: list[dict] = []
+    T = eval_times.size
+    for k in range(T):
+        t = float(eval_times[k])
+        p_t = probs[:, k]
+        bin_id = _quantile_bins(p_t, n_bins)
+        for b in range(n_bins):
+            mask = bin_id == b
+            bin_count = int(mask.sum())
+            if bin_count == 0:
+                continue
+            pred_mean = float(p_t[mask].mean())
+            # Fit AJ on every observed cause within the bin so the
+            # at-risk denominator decrements correctly for competing
+            # events; then read off the requested cause's curve.
+            ci = CumulativeIncidence().fit(time=test_time[mask], event=test_event[mask])
+            curve = ci.curves_.get((None, cause))
+            if curve is None:
+                obs = 0.0
+            else:
+                cif_at, _ = curve.evaluate(np.array([t], dtype=float))
+                obs = float(cif_at[0])
+            lo, hi = _wilson_ci(obs, bin_count, z)
+            rows.append(
+                {
+                    "model": name,
+                    "times": t,
+                    "predicted_decile": pred_mean,
+                    "observed_freq": obs,
+                    "lower_ci": lo,
+                    "upper_ci": hi,
+                    "bin_n": bin_count,
+                }
+            )
+    return rows
+
+
+def calibration_cr(
+    predictions: Mapping[str, np.ndarray],
+    test_time: np.ndarray,
+    test_event: np.ndarray,
+    eval_times: np.ndarray,
+    *,
+    cause: int = 1,
+    n_bins: int = 10,
+    confidence_level: float = 0.95,
+) -> pd.DataFrame:
+    """Quantile-decile calibration plot data with per-bin Wilson CI.
+
+    Tidy / long-form one-call replacement for the R
+    ``riskRegression::plotCalibration(method="quantile", q=10)`` block.
+    For every ``(model, eval_time)`` pair the predicted CIF values are
+    partitioned into ``n_bins`` quantile bins; per bin the predicted
+    midpoint is the bin mean of predicted CIF, the observed frequency is
+    the Aalen-Johansen empirical cumulative incidence (cause of interest)
+    fit on the bin's subjects and evaluated at the eval time, and the
+    confidence interval is a textbook Wilson score interval.
+
+    Parameters
+    ----------
+    predictions : Mapping[str, ndarray]
+        ``model_name -> CIF`` array of shape ``(n_test, n_eval_times)``
+        evaluated at the same ``eval_times``.
+    test_time, test_event : array-like
+        Held-out fold time and event code (``0`` = censoring; ``cause``
+        = cause of interest; other positive ints = competing events).
+    eval_times : array-like of float
+        Times at which calibration is evaluated. The same eval-time
+        column index is used across all models.
+    cause : int, default 1
+    n_bins : int, default 10
+        Number of quantile bins per (model, time). Mirrors R's
+        ``q`` parameter.
+    confidence_level : float, default 0.95
+        Confidence level for the Wilson score interval.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Long-form, one row per (model, eval_time, bin). Columns:
+        ``model, times, predicted_decile, observed_freq, lower_ci,
+        upper_ci, bin_n``. Rows for empty bins are dropped.
+    """
+    test_time = np.asarray(test_time, dtype=float)
+    test_event = np.asarray(test_event)
+    eval_times = np.asarray(eval_times, dtype=float)
+    n = test_time.size
+    T = eval_times.size
+
+    if test_event.size != n:
+        raise ValueError("test_time and test_event must have the same length")
+    if T == 0:
+        raise ValueError("eval_times must be non-empty")
+    if not np.all(np.diff(eval_times) > 0):
+        raise ValueError("eval_times must be strictly increasing")
+    if not predictions:
+        raise ValueError("predictions must contain at least one model")
+    if n_bins < 2:
+        raise ValueError("n_bins must be >= 2")
+    if not (0.0 < confidence_level < 1.0):
+        raise ValueError("confidence_level must be in (0, 1)")
+
+    z = float(norm.ppf(0.5 + confidence_level / 2.0))
+
+    rows: list[dict] = []
+    for name, arr in predictions.items():
+        probs = np.asarray(arr, dtype=float)
+        if probs.shape != (n, T):
+            raise ValueError(f"predictions[{name!r}] shape {probs.shape} != expected ({n}, {T})")
+        rows.extend(
+            _calibration_one_model(name, probs, test_time, test_event, eval_times, cause, n_bins, z)
+        )
+    return pd.DataFrame(rows, columns=_CALIB_COLS)
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -290,6 +486,8 @@ def score_cr(
     confidence_level: float = 0.95,
     n_jobs: int = -1,
     random_state: int | None = None,
+    calibration_at: Sequence[float] | None = None,
+    calibration_n_bins: int = 10,
 ) -> ScoreResult:
     """Competing-risks time-dep AUC, Brier, IBS, iAUC.
 
@@ -325,6 +523,14 @@ def score_cr(
         Number of parallel workers for the bootstrap loop.
     random_state : int or None, default None
         Seed for the bootstrap.
+    calibration_at : sequence of float, optional
+        When supplied, populates ``ScoreResult.calibration`` by
+        delegating to :func:`calibration_cr` at these times. The
+        prediction columns at each ``calibration_at`` time are taken from
+        the matching ``eval_times`` column; every entry of
+        ``calibration_at`` must be present in ``eval_times``.
+    calibration_n_bins : int, default 10
+        Number of quantile bins for the calibration block.
 
     Returns
     -------
@@ -487,4 +693,29 @@ def score_cr(
         if "brier" in metric_set
         else pd.DataFrame(columns=ibs_cols)
     )
-    return ScoreResult(auc=auc_df, brier=brier_df, iauc=iauc_df, ibs=ibs_df)
+
+    if calibration_at is None:
+        calib_df = pd.DataFrame(columns=_CALIB_COLS)
+    else:
+        calib_at = np.asarray(calibration_at, dtype=float)
+        if calib_at.size == 0:
+            raise ValueError("calibration_at must be non-empty when supplied")
+        # Each calibration time must be one of the eval_times (so we can
+        # reuse the matching prediction column without re-querying the model).
+        col_idx = np.searchsorted(eval_times, calib_at)
+        in_range = (col_idx < T) & np.isclose(eval_times[np.clip(col_idx, 0, T - 1)], calib_at)
+        if not np.all(in_range):
+            missing = calib_at[~in_range].tolist()
+            raise ValueError(f"calibration_at entries {missing} are not in eval_times")
+        calib_preds = {name: pred_arrs[m][:, col_idx] for m, name in enumerate(model_names)}
+        calib_df = calibration_cr(
+            calib_preds,
+            test_time,
+            test_event,
+            calib_at,
+            cause=cause,
+            n_bins=calibration_n_bins,
+            confidence_level=confidence_level,
+        )
+
+    return ScoreResult(auc=auc_df, brier=brier_df, iauc=iauc_df, ibs=ibs_df, calibration=calib_df)
