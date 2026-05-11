@@ -2,25 +2,31 @@ cff-version: 1.2.0
 message: "If you use comprisk in your research, please cite it as below."
 title: "comprisk: a Python toolkit for competing risks"
 abstract: >-
-  A Python toolkit for competing-risks survival analysis. The 0.3 release
-  ships a competing-risks random survival forest with a scikit-learn-
-  compatible API, Aalen-Johansen CIF and Nelson-Aalen CHF outputs, cause-
-  specific Wolbers and Uno IPCW concordance metrics, OOB Breiman
-  permutation variable importance, Ishwaran minimal-depth variable
-  selection, and bit-identical reproducibility with randomForestSRC. As
-  of v0.4 also ships Fine-Gray subdistribution-hazard regression
-  (cmprsk::crr-parity β̂), a stand-alone Aalen-Johansen cumulative-
-  incidence estimator (cmprsk::cuminc-parity variance), Gray's K-sample
-  test (cmprsk::cuminc Tests-parity), and cause-specific Cox PH
-  (survival::coxph-parity). Renamed from `crforest` in 0.3.1.
+  A Python toolkit for competing-risks survival analysis. Ships a
+  competing-risks random survival forest with a scikit-learn-compatible
+  API, Aalen-Johansen CIF and Nelson-Aalen CHF outputs, cause-specific
+  Wolbers and Uno IPCW concordance metrics, OOB Breiman permutation
+  variable importance, Ishwaran minimal-depth variable selection, exact
+  cause-specific TreeSHAP attributions, and bit-identical reproducibility
+  with randomForestSRC. As of v0.4 also ships Fine-Gray subdistribution-
+  hazard regression (cmprsk::crr-parity β̂), a stand-alone Aalen-Johansen
+  cumulative-incidence estimator (cmprsk::cuminc-parity variance), Gray's
+  K-sample test (cmprsk::cuminc Tests-parity), cause-specific Cox PH
+  (survival::coxph-parity), and a competing-risks model-evaluation harness
+  with IPCW time-dependent AUC / Brier / iAUC / IBS and quantile-decile
+  calibration data (riskRegression::Score / plotCalibration-parity).
+  Renamed from `crforest` in 0.3.1.
 type: software
 version: 0.4.0
-date-released: 2026-05-09
+date-released: 2026-05-11
 doi: 10.5281/zenodo.19876282
 identifiers:
   - type: doi
     value: 10.5281/zenodo.19876282
     description: Concept DOI (always resolves to latest version)
+  - type: doi
+    value: 10.5281/zenodo.20117505
+    description: Version DOI (v0.4.0)
   - type: doi
     value: 10.5281/zenodo.20032382
     description: Version DOI (v0.3.1)
