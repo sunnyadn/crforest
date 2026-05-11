@@ -85,22 +85,33 @@ class CIFCurve:
 
 
 def _aalen_johansen_curves(
-    time: np.ndarray, event: np.ndarray, cause_codes: list[int]
+    time: np.ndarray, event: np.ndarray, requested_causes: list[int]
 ) -> dict[int, CIFCurve]:
-    """Compute Aalen-Johansen CIF curves for one stratum, all causes.
+    """Compute Aalen-Johansen CIF curves for one stratum.
 
     Implements the recursion in the module docstring. A single forward pass
     over the unique event times jointly tracks the Kaplan-Meier survival
     ``surv`` and per-cause cumulative incidence ``cif_k``, plus three running
     accumulators for the Pepe (1991) variance.
 
-    Returns a dict mapping cause code to ``CIFCurve``.
+    The recursion always runs over *every* competing cause observed in the
+    stratum: the survival decrement ``S(t) = S(t-)·(y - d)/y`` uses the total
+    event count ``d`` across all causes, so every cause's CIF and variance
+    depend on events the caller may not have requested. ``requested_causes``
+    only selects which curves are returned; a requested cause with no events
+    in this stratum yields an empty :class:`CIFCurve`.
+
+    Returns a dict mapping each requested cause code to a ``CIFCurve``.
     """
     # --- group counts at unique event times -----------------------------------
     is_event = event > 0
     event_times = np.unique(time[is_event])
     if event_times.size == 0:
-        return {k: CIFCurve() for k in cause_codes}
+        return {k: CIFCurve() for k in requested_causes}
+
+    # Recurse over all observed causes, not just the requested subset, so the
+    # at-risk dynamics and cross-cause variance terms are complete.
+    cause_codes = sorted(int(c) for c in np.unique(event[is_event]))
 
     # at_risk[j] = number of subjects with time >= event_times[j]
     sort_idx = np.argsort(time, kind="mergesort")
@@ -196,7 +207,7 @@ def _aalen_johansen_curves(
                 jump_cif[k].append(float(f_now))
                 jump_var[k].append(float(v_now))
 
-    return {
+    fitted = {
         k: CIFCurve(
             times=np.asarray(jump_times[k], dtype=np.float64),
             cif=np.asarray(jump_cif[k], dtype=np.float64),
@@ -204,6 +215,7 @@ def _aalen_johansen_curves(
         )
         for k in cause_codes
     }
+    return {k: fitted.get(k, CIFCurve()) for k in requested_causes}
 
 
 class CumulativeIncidence:
