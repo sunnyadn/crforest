@@ -30,6 +30,12 @@ currently endure for competing-risks survival analysis.
   splitting + composite CR log-rank, Aalen-Johansen CIF, Nelson-Aalen CHF,
   Wolbers + Uno IPCW concordance, OOB Breiman VIMP, Ishwaran minimal-depth
   variable selection, exact TreeSHAP.
+- **CR-aware model evaluation.** `score_cr` reports IPCW time-dependent
+  AUC and Brier score under competing risks, plus integrated AUC / Brier
+  (iAUC, IBS) with bootstrap CIs; `calibration_cr` returns tidy quantile-
+  decile calibration data with per-bin Wilson intervals — one-call
+  replacements for the CR-mode `riskRegression::Score()` / `plotCalibration()`
+  blocks, taking a dict of named candidate models.
 - **10–22× faster than [randomForestSRC](https://cran.r-project.org/package=randomForestSRC)**
   on real EHR data (CHF 14–22×, SEER 11.6×; full tables in
   [docs/benchmarks.md](docs/benchmarks.md)), with C ≈ 0.85 on both
@@ -161,6 +167,7 @@ standalone API), use [lifelines](https://lifelines.readthedocs.io/) or
 | **v0.4** | `CumulativeIncidence` (stand-alone Aalen-Johansen)    | Shipped              |
 | **v0.4** | `gray_test` (Gray's K-sample log-rank)                | Shipped              |
 | **v0.4** | `CauseSpecificCox` (CR-aware censoring)               | Shipped              |
+| **v0.4** | `score_cr` / `calibration_cr` (CR-aware evaluation)   | Shipped              |
 | v1.0     | API freeze + JMLR MLOSS submission                    | Planned              |
 | v1.1     | Full GPU rewrite                                      | Planned              |
 

@@ -166,6 +166,54 @@ print(f"5-fold C-index, cause 1: {scores.mean():.3f} ± {scores.std():.3f}")
 also slots into `Pipeline` / `cross_val_predict`. For cause-`k` risk or
 CIF / CHF curves use the explicit methods.
 
+### Time-dependent AUC / Brier / calibration (`score_cr`, `calibration_cr`)
+
+`score_cr` is the CR-mode analogue of R `riskRegression::Score()`: pass a
+dict of named candidate models (each a CIF matrix of shape
+`(n_test, n_eval_times)` at the cause of interest) and get back IPCW
+time-dependent AUC and Brier score under competing risks, plus the
+integrated summaries iAUC and IBS, optionally with bootstrap CIs.
+
+```python
+from comprisk import CompetingRiskForest, FineGrayRegression, score_cr
+
+eval_times = np.array([1.0, 3.0, 5.0])
+rsf = CompetingRiskForest(n_estimators=300, random_state=0).fit(Xtr, ttr, etr)
+fg  = FineGrayRegression(cause=1).fit(Xtr, time=ttr, event=etr)
+
+preds = {
+    "RSF":       rsf.predict_cif(Xte, times=eval_times)[:, 0, :],   # cause 1
+    "Fine-Gray": fg.predict_cumulative_incidence(Xte, times=eval_times),
+}
+
+res = score_cr(
+    preds, test_time=tte, test_event=ete, eval_times=eval_times,
+    cause=1, metrics=("auc", "brier"), n_bootstrap=500, random_state=0,
+)
+print(res.auc)    # columns: model, times, AUC, lower, upper
+print(res.brier)  # columns: model, times, Brier, lower, upper
+print(res.iauc)   # columns: model, iAUC, lower, upper
+print(res.ibs)    # columns: model, IBS, lower, upper
+```
+
+`calibration_cr` returns tidy / long-form calibration-plot data — one row
+per `(model, time, quantile-bin)` with the predicted bin midpoint, the
+Aalen-Johansen empirical CIF on that bin's subjects, and a per-bin Wilson
+confidence interval (the CR-mode analogue of
+`riskRegression::plotCalibration(method="quantile", q=10)`). It is also
+reachable from `score_cr(..., calibration_at=...)` (which populates
+`res.calibration`).
+
+```python
+from comprisk import calibration_cr
+
+calib = calibration_cr(
+    preds, test_time=tte, test_event=ete, eval_times=eval_times, cause=1, n_bins=10,
+)
+# columns: model, times, predicted_decile, observed_freq, lower_ci, upper_ci, bin_n
+# feed straight into a facet_wrap-style plot (matplotlib / seaborn / plotnine)
+```
+
 ## 5. Permutation variable importance (VIMP)
 
 Two flavours, both returning a `pandas.DataFrame` with columns
@@ -334,9 +382,6 @@ production fits.
 
 ## What's not here yet
 
-- Calibration plots / time-dependent Brier score helpers (use
-  [scikit-survival](https://scikit-survival.readthedocs.io/) for those, or
-  roll your own from `predict_cif` curves).
 - `predict_proba` / classification-style outputs.
 - Distributed (multi-machine) training.
 - Confidence intervals on VIMP (sklearn's `permutation_importance` reports

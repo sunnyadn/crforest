@@ -11,12 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `from crforest import …` was the supported form for those versions. See
 > the 0.3.1 entry below for the migration recipe.
 
-## [0.4.0] — 2026-05-09
+## [0.4.0] — 2026-05-11
 
-Adds the four canonical CR regression / non-parametric methods announced
-in the v0.4 roadmap: Fine-Gray subdistribution-hazard regression,
-Aalen-Johansen cumulative incidence with cmprsk-parity variance, Gray's
-K-sample test, and cause-specific Cox PH. Closes SUN-45.
+Broadens comprisk from "CR random forest" to a CR toolkit: the four
+canonical CR regression / non-parametric methods (Fine-Gray, Aalen-
+Johansen, Gray's test, cause-specific Cox — SUN-45), exact TreeSHAP for
+the forest (SUN-43), and a CR-aware model-evaluation harness with time-
+dependent AUC / Brier / IBS / iAUC and quantile-decile calibration data
+(SUN-60, SUN-64).
 
 ### Added
 
@@ -47,10 +49,39 @@ K-sample test, and cause-specific Cox PH. Closes SUN-45.
   counting-process martingale theory; matches `R cmprsk::cuminc()$Tests`
   (statistic and p-value) to floating-point noise on grouped synthetic
   and follic-by-clinstg fixtures.
-- Test fixtures: `tests/cross_check_cmprsk.R` (R-side reference
-  generator), `tests/fixtures/cmprsk_*`, `tests/fixtures/cuminc_*`,
-  `tests/fixtures/csc_*`, `tests/fixtures/gray_*` (committed CSV
-  reference fits).
+- `CompetingRiskForest.shap_values(X)` — exact cause-specific TreeSHAP
+  attributions (Lundberg et al. 2018, Algorithm 2; O(L·D²) per tree)
+  returning `(shap, base)` of shape `(n, p, n_times, n_causes)`;
+  attributions + baseline reconstruct the CIF (additivity). numba+nogil
+  per-tree kernel, parallel over the ensemble. New private module
+  `comprisk._shap`.
+- `score_cr` — CR-aware model evaluation: IPCW-weighted time-dependent
+  AUC and Brier score (Uno-style censoring correction under competing
+  risks), plus integrated AUC (iAUC) and integrated Brier score (IBS),
+  with optional bootstrap confidence intervals. One-call replacement for
+  the AUC/Brier block of `R riskRegression::Score()` in CR mode; takes a
+  dict of named candidate models. Returns a `ScoreResult` dataclass.
+- `calibration_cr` (also reachable via `score_cr(..., calibration_at=)`)
+  — tidy / long-form quantile-decile calibration table per
+  `(model, time, bin)`: predicted bin midpoint, Aalen-Johansen empirical
+  CIF on the bin's subjects, and a per-bin Wilson 95% interval. One-call
+  replacement for `R riskRegression::plotCalibration(method="quantile",
+  q=10)`; per-bin observed frequency matches the R reference within
+  5.55e-16 on the pbc held-out fold.
+- Test fixtures: `tests/cross_check_cmprsk.R` /
+  `tests/cross_check_calibration.R` (R-side reference generators),
+  `tests/fixtures/cmprsk_*`, `cuminc_*`, `csc_*`, `gray_*`, `calib_pbc.csv`
+  (committed CSV reference fits).
+
+### Fixed
+
+- `CumulativeIncidence(cause_codes=[k])` silently overestimated the
+  cause-`k` CIF (and got the variance wrong) when the data contained
+  events outside `cause_codes`: the Kaplan-Meier survival decrement was
+  summed only over the requested causes, hiding competing events from the
+  at-risk dynamics. The recursion now always runs over every observed
+  cause; `cause_codes` only selects which curves are returned.
+  `cause_codes=None` is unchanged (SUN-71).
 
 ## [0.3.1] — 2026-05-04
 
