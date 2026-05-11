@@ -52,6 +52,10 @@ dev = [
     "pre-commit>=3.7",
     "pyarrow>=15.0",
 ]
+examples = [
+    "marimo>=0.23",
+    "matplotlib>=3.8",
+]
 maintainer = [
     "rpy2>=3.5",
 ]
@@ -110,6 +114,9 @@ markers = [
 target-version = "py310"
 line-length = 100
 src = ["src", "tests"]
+# marimo notebooks have their own canonical format (one `def _()` per cell, a
+# bare expression as the cell's last line) that fights ruff's check + format.
+extend-exclude = ["examples"]
 
 [tool.ruff.lint]
 select = [

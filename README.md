@@ -114,6 +114,14 @@ selected = forest.minimal_depth().query("selected")["feature"].tolist()
 shap, base = forest.shap_values(X[:10])               # (n, p, n_times, n_causes)
 ```
 
+[`examples/shap_explain.py`](examples/shap_explain.py) is an interactive
+[marimo](https://marimo.io) notebook (a plain `.py` file) that walks through
+SHAP additivity, per-cause global importance, and per-subject attribution over
+the time grid, with sliders for the forest size and the subject under
+inspection. Run it with `uv run --extra examples marimo edit examples/shap_explain.py`
+(or `uvx marimo edit --sandbox examples/shap_explain.py` to use the notebook's
+own PEP 723 dependency header).
+
 ### Fine-Gray, Aalen-Johansen, Gray's test, and cause-specific Cox
 
 ```python

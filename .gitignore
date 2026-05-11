@@ -49,6 +49,9 @@ uv.lock
 # Jupyter
 .ipynb_checkpoints/
 
+# marimo (notebook layout/session cache; the .py notebooks themselves are tracked)
+__marimo__/
+
 # Internal planning (not for public repo)
 docs/internal/
 docs/superpowers/
