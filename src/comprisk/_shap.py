@@ -129,7 +129,10 @@ def _compute_node_covers(
 # ---------------------------------------------------------------------------
 
 
-def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
+_TIME_AGGREGATORS = ("sum", "trapezoid")
+
+
+def shap_values(forest, X, times=None, *, time_aggregate=None) -> tuple[np.ndarray, np.ndarray]:
     """Compute TreeSHAP values for cause-specific CIF.
 
     Parameters
@@ -141,13 +144,17 @@ def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
     times : array-like of float or None, default=None
         Time points at which to evaluate SHAP.  If ``None``, uses
         the model's ``unique_times_`` grid.
+    time_aggregate : {None, "sum", "trapezoid"}, default=None
+        If set, collapse the time axis to one scalar per cause *before* the
+        attribution (see :meth:`CompetingRiskForest.shap_values`).
 
     Returns
     -------
-    shap_values : ndarray, shape (n_samples, n_features, n_times_out, n_causes)
-        Cause-specific CIF SHAP attributions.
-    base_value : ndarray, shape (n_times_out, n_causes)
-        Expected CIF for the empty conditioning set.
+    shap_values : ndarray
+        ``(n_samples, n_features, n_times_out, n_causes)`` when
+        ``time_aggregate is None``, else ``(n_samples, n_features, n_causes)``.
+    base_value : ndarray
+        ``(n_times_out, n_causes)`` or ``(n_causes,)`` to match.
 
         Additivity holds point-wise:
 
@@ -157,6 +164,10 @@ def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
             approx predict_cif(X_s)_{c,t}
     """
     check_is_fitted(forest, "trees_")
+    if time_aggregate is not None and time_aggregate not in _TIME_AGGREGATORS:
+        raise ValueError(
+            f"time_aggregate must be None or one of {_TIME_AGGREGATORS}; got {time_aggregate!r}"
+        )
     X = np.asarray(X, dtype=np.float64)
     if X.ndim != 2:
         raise ValueError(f"X must be 2-D; got ndim={X.ndim}")
@@ -184,8 +195,12 @@ def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
     elif n_jobs is None:
         n_jobs = 1
 
-    out_shape = (n_samples, n_features, n_times_out, n_causes)
-    base_shape = (n_times_out, n_causes)
+    if time_aggregate is None:
+        out_shape = (n_samples, n_features, n_times_out, n_causes)
+        base_shape = (n_times_out, n_causes)
+    else:
+        out_shape = (n_samples, n_features, n_causes)
+        base_shape = (n_causes,)
     trees = list(forest.trees_)
     n_trees = len(trees)
 
@@ -200,7 +215,14 @@ def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
     # before any worker touches them (concurrent first-compile of a recursive
     # jitted function can crash the interpreter).
     _accumulate_tree_shap(
-        trees[0], X_input, n_features, time_projection, n_times_out, total_shap, total_base
+        trees[0],
+        X_input,
+        n_features,
+        time_projection,
+        time_aggregate,
+        times_out,
+        total_shap,
+        total_base,
     )
     rest = trees[1:]
     if rest and n_jobs > 1:
@@ -214,7 +236,8 @@ def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
                     X_input,
                     n_features,
                     time_projection,
-                    n_times_out,
+                    time_aggregate,
+                    times_out,
                     out_shape,
                     base_shape,
                 )
@@ -227,7 +250,14 @@ def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
     elif rest:
         for tree in rest:
             _accumulate_tree_shap(
-                tree, X_input, n_features, time_projection, n_times_out, total_shap, total_base
+                tree,
+                X_input,
+                n_features,
+                time_projection,
+                time_aggregate,
+                times_out,
+                total_shap,
+                total_base,
             )
 
     total_shap /= n_trees
@@ -240,7 +270,8 @@ def _chunk_shap(
     X_input: np.ndarray,
     n_features: int,
     time_projection,
-    n_times_out: int,
+    time_aggregate,
+    times_out: np.ndarray,
     out_shape: tuple,
     base_shape: tuple,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -249,9 +280,23 @@ def _chunk_shap(
     acc_base = np.zeros(base_shape, dtype=np.float64)
     for tree in trees:
         _accumulate_tree_shap(
-            tree, X_input, n_features, time_projection, n_times_out, acc_shap, acc_base
+            tree,
+            X_input,
+            n_features,
+            time_projection,
+            time_aggregate,
+            times_out,
+            acc_shap,
+            acc_base,
         )
     return acc_shap, acc_base
+
+
+def _reduce_time_axis(arr: np.ndarray, time_aggregate, times_out: np.ndarray) -> np.ndarray:
+    """Collapse the last (time) axis of ``arr`` — plain sum or trapezoidal rule."""
+    if time_aggregate == "sum":
+        return arr.sum(axis=-1)
+    return np.trapezoid(arr, x=times_out, axis=-1)
 
 
 def _accumulate_tree_shap(
@@ -259,7 +304,8 @@ def _accumulate_tree_shap(
     X_input: np.ndarray,
     n_features: int,
     time_projection,
-    n_times_out: int,
+    time_aggregate,
+    times_out: np.ndarray,
     acc_shap: np.ndarray,
     acc_base: np.ndarray,
 ) -> None:
@@ -267,32 +313,50 @@ def _accumulate_tree_shap(
 
     The structural TreeSHAP recursion fills a ``(batch, n_features, n_leaves)``
     weight tensor; the ``(n_causes, n_times)`` leaf values are folded in by a
-    single ``W @ leaf_table_2d`` matmul.  When ``times`` is a small subset, the
-    leaf table is projected onto those columns *first*, so the matmul's right
-    operand is ``n_causes * len(times)`` wide rather than the full grid.
+    single ``W @ leaf_table_2d`` matmul.  When ``times`` is a small subset the
+    leaf table is projected onto those columns *first*, and when
+    ``time_aggregate`` is set the time axis is collapsed (sum / trapezoid)
+    first too — both shrink the matmul's right operand.  ``covers`` and the
+    un-projected ``base`` are cached on the (flattened) tree so repeated
+    ``shap_values`` calls don't recompute them.
     """
     flat, leaf_counts = _get_flat_and_leaf_counts(tree)
     if leaf_counts is None:
         raise RuntimeError("Could not determine leaf sample counts for SHAP cover computation.")
 
-    covers = _compute_node_covers(
-        flat.is_leaf_flags,
-        flat.left_children,
-        flat.right_children,
-        flat.leaf_idx_of_node,
-        leaf_counts,
-    )
+    covers = getattr(flat, "_shap_covers", None)
+    if covers is None:
+        covers = _compute_node_covers(
+            flat.is_leaf_flags,
+            flat.left_children,
+            flat.right_children,
+            flat.leaf_idx_of_node,
+            leaf_counts,
+        )
+        flat._shap_covers = covers
+
+    base = getattr(flat, "_shap_base", None)
+    if base is None:
+        base = _base_value(flat, covers)  # (n_causes, n_times_full)
+        flat._shap_base = base
 
     leaf_table = flat.leaf_table  # (n_leaves, n_causes, n_times_full)
-    n_leaves, n_causes = leaf_table.shape[0], leaf_table.shape[1]
-
-    base = _base_value(flat, covers)  # (n_causes, n_times_full)
     if time_projection is not None:
         leaf_table = time_projection(leaf_table)
         base = time_projection(base)
-    acc_base += base.T
 
-    leaf_table_2d = np.ascontiguousarray(leaf_table.reshape(n_leaves, n_causes * n_times_out))
+    if time_aggregate is not None:
+        leaf_table = _reduce_time_axis(
+            leaf_table, time_aggregate, times_out
+        )  # (n_leaves, n_causes)
+        base = _reduce_time_axis(base, time_aggregate, times_out)  # (n_causes,)
+        acc_base += base
+    else:
+        acc_base += base.T
+
+    n_leaves, n_causes = leaf_table.shape[0], leaf_table.shape[1]
+    cols = n_causes if leaf_table.ndim == 2 else n_causes * leaf_table.shape[2]
+    leaf_table_2d = np.ascontiguousarray(leaf_table.reshape(n_leaves, cols))
 
     n_samples = len(X_input)
     batch_size = max(1, min(n_samples, _W_BATCH_BYTES // max(1, n_features * n_leaves * 8)))
@@ -311,10 +375,14 @@ def _accumulate_tree_shap(
             n_features,
             n_leaves,
         )  # (b, n_features, n_leaves)
-        phi = (weights.reshape(b * n_features, n_leaves) @ leaf_table_2d).reshape(
-            b, n_features, n_causes, n_times_out
-        )
-        acc_shap[start:end] += phi.transpose(0, 1, 3, 2)
+        phi = weights.reshape(b * n_features, n_leaves) @ leaf_table_2d  # (b*F, cols)
+        if time_aggregate is not None:
+            acc_shap[start:end] += phi.reshape(b, n_features, n_causes)
+        else:
+            n_times_out = cols // n_causes
+            acc_shap[start:end] += phi.reshape(b, n_features, n_causes, n_times_out).transpose(
+                0, 1, 3, 2
+            )
 
 
 def _base_value(flat: FlatTree, covers: np.ndarray) -> np.ndarray:

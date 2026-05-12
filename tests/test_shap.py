@@ -263,6 +263,86 @@ def test_shap_parallel_matches_serial():
 
 
 # ---------------------------------------------------------------------------
+# time_aggregate: risk-score SHAP — collapse the time axis before attribution
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("mode", ["default", "reference"])
+@pytest.mark.parametrize("agg", ["sum", "trapezoid"])
+def test_shap_time_aggregate_equals_aggregating_full_grid(mode, agg):
+    """``time_aggregate`` == aggregating the full per-time SHAP after the fact."""
+    X, time, event = _make_synthetic_cr(n=80)
+    f = CompetingRiskForest(n_estimators=8, random_state=5, mode=mode, max_depth=5).fit(
+        X, time, event
+    )
+
+    shap_agg, base_agg = f.shap_values(X, time_aggregate=agg)
+    shap_full, base_full = f.shap_values(X)
+
+    assert shap_agg.shape == (len(X), X.shape[1], f.n_causes_)
+    assert base_agg.shape == (f.n_causes_,)
+
+    if agg == "sum":
+        shap_ref = shap_full.sum(axis=2)
+        base_ref = base_full.sum(axis=0)
+    else:
+        shap_ref = np.trapezoid(shap_full, x=f.unique_times_, axis=2)
+        base_ref = np.trapezoid(base_full, x=f.unique_times_, axis=0)
+
+    assert np.allclose(shap_agg, shap_ref, atol=1e-10, rtol=1e-9)
+    assert np.allclose(base_agg, base_ref, atol=1e-10, rtol=1e-9)
+
+
+def test_shap_time_aggregate_additivity():
+    """Aggregated SHAP + base reconstructs the aggregated CIF curve per (sample, cause)."""
+    X, time, event = _make_synthetic_cr(n=80)
+    f = CompetingRiskForest(n_estimators=10, random_state=1, max_depth=5).fit(X, time, event)
+
+    cif = f.predict_cif(X)  # (n, n_causes, n_times)
+    for agg, reducer in (
+        ("sum", lambda a: a.sum(axis=-1)),
+        ("trapezoid", lambda a: np.trapezoid(a, x=f.unique_times_, axis=-1)),
+    ):
+        shap_agg, base_agg = f.shap_values(X, time_aggregate=agg)
+        recon = shap_agg.sum(axis=1) + base_agg  # (n, n_causes)
+        assert np.allclose(recon, reducer(cif), atol=1e-9, rtol=1e-6)
+
+
+def test_shap_time_aggregate_with_custom_times():
+    """``time_aggregate`` aggregates over the requested ``times`` window, not the full grid."""
+    X, time, event = _make_synthetic_cr(n=80)
+    f = CompetingRiskForest(n_estimators=8, random_state=2, max_depth=5).fit(X, time, event)
+    window = f.unique_times_[2:8]
+
+    shap_agg, base_agg = f.shap_values(X, times=window, time_aggregate="sum")
+    shap_win, base_win = f.shap_values(X, times=window)
+    assert np.allclose(shap_agg, shap_win.sum(axis=2), atol=1e-10, rtol=1e-9)
+    assert np.allclose(base_agg, base_win.sum(axis=0), atol=1e-10, rtol=1e-9)
+
+
+def test_shap_time_aggregate_rejects_bad_value():
+    X, time, event = _make_synthetic_cr(n=40)
+    f = CompetingRiskForest(n_estimators=3, random_state=0, max_depth=4).fit(X, time, event)
+    with pytest.raises(ValueError, match="time_aggregate"):
+        f.shap_values(X, time_aggregate="mean")
+
+
+def test_shap_repeated_calls_are_identical():
+    """The covers/base cache on the tree must not perturb a second call."""
+    X, time, event = _make_synthetic_cr(n=80)
+    f = CompetingRiskForest(n_estimators=10, random_state=4, max_depth=5).fit(X, time, event)
+    s1, b1 = f.shap_values(X)
+    s2, b2 = f.shap_values(X)
+    assert np.array_equal(s1, s2)
+    assert np.array_equal(b1, b2)
+    # ... and the cache is consistent across the aggregated path too
+    sa1, ba1 = f.shap_values(X, time_aggregate="sum")
+    sa2, ba2 = f.shap_values(X, time_aggregate="sum")
+    assert np.array_equal(sa1, sa2)
+    assert np.array_equal(ba1, ba2)
+
+
+# ---------------------------------------------------------------------------
 # Compatibility: slice extraction for shap.summary_plot
 # ---------------------------------------------------------------------------
 

@@ -35,6 +35,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to ≤ 3e-6 on `pbc` (n = 276) and `follic` (n = 541) for LASSO / MCP /
   SCAD; the `lambda → 0` limit reproduces `FineGrayRegression` to ≤ 1e-3.
 
+### Added
+
+- `CompetingRiskForest.shap_values(time_aggregate="sum" | "trapezoid")`
+  (SUN-74) — "risk-score" SHAP that collapses the time axis to one scalar
+  per cause *before* the attribution, returning
+  `(n_samples, n_features, n_causes)`. Because SHAP is linear in the leaf
+  value, `shap_values(time_aggregate="sum")` equals
+  `shap_values().sum(axis=2)` but is computed without ever materialising
+  the per-time-point tensor — much faster and lighter. `"sum"` sums the
+  CIF over the grid (`times` if given, else `unique_times_`); `"trapezoid"`
+  uses the trapezoidal integral (grid-spacing aware).
+
 ### Changed
 
 - `CompetingRiskForest.shap_values()` is dramatically faster (SUN-74),
@@ -43,14 +55,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The TreeSHAP recursion now emits only the *structural* per-`(leaf,
   feature)` weights; the `(n_causes, n_times)` leaf tensors are folded
   back in by a single BLAS matmul per tree (`phi = W @ leaf_table_2d`),
-  taking the `n_causes × n_times` factor out of the hot recursion. When a
-  small `times=` subset is requested the leaf table is projected onto
-  those columns *before* the matmul. Two further fixes: the recursion's
-  scratch path-arrays are now sized by tree height rather than node count
-  (they were over-allocated by ~10⁴× on deep, wide trees — the dominant
-  cost), and per-tree contributions are reduced in worker-local
-  accumulators instead of one full-array `+=` per tree. Measured ~14×
-  faster on an 80-tree, depth-15 forest (n_test = 500: 171 s → 12 s).
+  taking the `n_causes * n_times` factor out of the hot recursion. When a
+  small `times=` subset (or a `time_aggregate`) is requested the leaf
+  table is projected/reduced *before* the matmul. Two further fixes: the
+  recursion's scratch path-arrays are now sized by tree height rather than
+  node count (they were over-allocated by ~10^4x on deep, wide trees — the
+  dominant cost), and per-tree contributions are reduced in worker-local
+  accumulators instead of one full-array `+=` per tree; `covers` and the
+  baseline are cached on the (flattened) tree so repeated `shap_values`
+  calls don't recompute them. Measured ~14× faster on an 80-tree,
+  depth-15 forest (n_test = 500: 171 s → 12 s).
 
 ## [0.4.0] — 2026-05-11
 

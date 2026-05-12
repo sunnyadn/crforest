@@ -931,7 +931,7 @@ class CompetingRiskForest(BaseEstimator):
             )
         return self._feature_importances_cache
 
-    def shap_values(self, X, times=None):
+    def shap_values(self, X, times=None, *, time_aggregate=None):
         """TreeSHAP values for cause-specific CIF.
 
         Uses exact polynomial-time TreeSHAP (Lundberg et al. 2018), adapted
@@ -945,16 +945,35 @@ class CompetingRiskForest(BaseEstimator):
         times : array-like of float or None, default=None
             Time points at which to evaluate SHAP.  If ``None``, the
             model's ``unique_times_`` grid is used.
+        time_aggregate : {None, "sum", "trapezoid"}, default=None
+            Collapse the time axis to a single scalar per cause *before* the
+            attribution, returning a "risk-score" SHAP whose values already
+            sum (over features) to the aggregated CIF.  Because SHAP is linear
+            in the leaf value, ``shap_values(time_aggregate="sum")`` equals
+            ``shap_values().sum(axis=2)`` but is computed without ever
+            materialising the per-time-point tensor (much faster and lighter).
+
+            - ``"sum"`` — sum of ``CIF`` over the time grid (``times`` if
+              given, else ``unique_times_``).  Grid-dependent, like
+              :meth:`predict_risk` 's ``"integrated_chf"`` sum convention but
+              on the CIF.
+            - ``"trapezoid"`` — trapezoidal integral of ``CIF`` over the same
+              grid (grid-spacing aware).
 
         Returns
         -------
-        shap_values : ndarray, shape (n_samples, n_features, n_times_out, n_causes)
-            Cause-specific CIF SHAP attributions.  For a fixed ``(time,
-            cause)`` slice this array is compatible with
-            ``shap.summary_plot``.
-        base_value : ndarray, shape (n_times_out, n_causes)
-            Expected CIF for the empty conditioning set (training-distribution
-            baseline), averaged across trees.
+        shap_values : ndarray
+            Cause-specific CIF SHAP attributions.  Shape
+            ``(n_samples, n_features, n_times_out, n_causes)`` when
+            ``time_aggregate is None`` — for a fixed ``(time, cause)`` slice
+            this is compatible with ``shap.summary_plot`` — or
+            ``(n_samples, n_features, n_causes)`` when a ``time_aggregate``
+            is requested.
+        base_value : ndarray
+            Expected (aggregated) CIF for the empty conditioning set
+            (training-distribution baseline), averaged across trees.  Shape
+            ``(n_times_out, n_causes)`` or ``(n_causes,)`` to match
+            ``shap_values``.
 
             Additivity holds point-wise:
 
@@ -963,7 +982,7 @@ class CompetingRiskForest(BaseEstimator):
                 sum_d shap_{s,d,t,c} + base_{t,c}
                 approx predict_cif(X_s)_{c,t}
         """
-        return _shap_values_impl(self, X, times=times)
+        return _shap_values_impl(self, X, times=times, time_aggregate=time_aggregate)
 
     def _importance_feature_names(self) -> list[str]:
         """Feature names for VIMP output; positional fallback when unset."""
