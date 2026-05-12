@@ -3,7 +3,14 @@
 Implements Lundberg, Erion & Lee (2018), *Consistent Individualized Feature
 Attribution for Tree Ensembles* (arXiv:1802.03888), Algorithm 2 (O(L·D²)).
 Leaf values are generalised from scalars to ``(n_causes, n_times)`` tensors;
-SHAP is linear in the leaf value so the cause x time vectorisation is direct.
+SHAP is linear in the leaf value, so the recursion only needs to produce the
+*structural* weights — one scalar per ``(leaf, path-feature)`` — and the
+``(n_causes, n_times)`` leaf tensors are multiplied back in with a single
+BLAS matmul per tree:
+
+    phi[s] = W[s] @ leaf_table.reshape(n_leaves, n_causes * n_times)
+
+This keeps the ``n_causes * n_times`` factor out of the hot recursion.
 """
 
 from __future__ import annotations
@@ -14,8 +21,14 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from comprisk._binning import apply_bins
-from comprisk._shap_alg2 import shap_tree_single_alg2
+from comprisk._shap_alg2 import shap_tree_weights
 from comprisk._tree_flat import FlatTree, flatten_tree
+
+# Per-batch budget for the transient ``(batch, n_features, n_leaves)`` weight
+# array (and the same-order matmul output).  Sample batching trades a few extra
+# BLAS calls per tree for a bounded scratch footprint under thread parallelism.
+_W_BATCH_BYTES = 128 * 1024 * 1024
+
 
 # ---------------------------------------------------------------------------
 # Tree representation helpers (cover counts, flattening)
@@ -158,13 +171,10 @@ def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
     else:
         times_out = np.asarray(times, dtype=np.float64)
         time_projection = _make_time_projection(forest.unique_times_, times_out)
-
     n_times_out = len(times_out)
+    n_causes = forest.n_causes_
 
     X_input = apply_bins(X, forest.bin_edges_) if forest.mode == "default" else X
-
-    total_shap = np.zeros((n_samples, n_features, n_times_out, forest.n_causes_), dtype=np.float64)
-    total_base = np.zeros((n_times_out, forest.n_causes_), dtype=np.float64)
 
     n_jobs = forest.n_jobs if hasattr(forest, "n_jobs") else 1
     if n_jobs == -1:
@@ -174,75 +184,93 @@ def shap_values(forest, X, times=None) -> tuple[np.ndarray, np.ndarray]:
     elif n_jobs is None:
         n_jobs = 1
 
-    # Sample batching caps per-tree scratch memory.  A batch of 2000 samples
-    # with 58 features, 200 time points, 2 causes costs ~370 MB.
-    batch_size = 2000 if n_samples > 2000 else None
+    out_shape = (n_samples, n_features, n_times_out, n_causes)
+    base_shape = (n_times_out, n_causes)
+    trees = list(forest.trees_)
+    n_trees = len(trees)
+
+    total_shap = np.zeros(out_shape, dtype=np.float64)
+    total_base = np.zeros(base_shape, dtype=np.float64)
 
     # Tree-level thread parallelism: threads share memory (no fork/COW overhead)
-    # and the numba kernels release the GIL, so multiple trees are processed
-    # concurrently.  At n_jobs=1 fall through to avoid executor overhead.
-    if n_jobs > 1:
-        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+    # and the numba weight kernels release the GIL.  Each worker owns a private
+    # accumulator over its slice of trees, so the only cross-tree reduction is
+    # over ``n_jobs`` arrays at the end (not over ``n_trees``).  The first tree
+    # is always done on the calling thread so the numba kernels are compiled
+    # before any worker touches them (concurrent first-compile of a recursive
+    # jitted function can crash the interpreter).
+    _accumulate_tree_shap(
+        trees[0], X_input, n_features, time_projection, n_times_out, total_shap, total_base
+    )
+    rest = trees[1:]
+    if rest and n_jobs > 1:
+        n_workers = min(n_jobs, len(rest))
+        chunks = [rest[w::n_workers] for w in range(n_workers)]
+        with ThreadPoolExecutor(max_workers=n_workers) as executor:
             futures = [
                 executor.submit(
-                    _compute_tree_shap,
-                    tree,
+                    _chunk_shap,
+                    chunk,
                     X_input,
                     n_features,
                     time_projection,
                     n_times_out,
-                    batch_size,
+                    out_shape,
+                    base_shape,
                 )
-                for tree in forest.trees_
+                for chunk in chunks
             ]
             for fut in futures:
-                phi_tree, base = fut.result()
-                total_shap += phi_tree
-                total_base += base
-    else:
-        for tree in forest.trees_:
-            phi_tree, base = _compute_tree_shap(
-                tree,
-                X_input,
-                n_features,
-                time_projection,
-                n_times_out,
-                batch_size,
+                chunk_shap, chunk_base = fut.result()
+                total_shap += chunk_shap
+                total_base += chunk_base
+    elif rest:
+        for tree in rest:
+            _accumulate_tree_shap(
+                tree, X_input, n_features, time_projection, n_times_out, total_shap, total_base
             )
-            total_shap += phi_tree
-            total_base += base
 
-    n_trees = len(forest.trees_)
     total_shap /= n_trees
     total_base /= n_trees
-
     return total_shap, total_base
 
 
-def _shap_tree_samples(
-    flat: FlatTree,
-    X_batch: np.ndarray,
+def _chunk_shap(
+    trees,
+    X_input: np.ndarray,
     n_features: int,
-    covers: np.ndarray,
     time_projection,
     n_times_out: int,
-) -> np.ndarray:
-    """Compute SHAP for a batch of samples on a single (already-flattened) tree."""
-    n_samples = len(X_batch)
-    n_causes = flat.leaf_table.shape[1]
-    phi_tree = np.zeros((n_samples, n_features, n_times_out, n_causes), dtype=np.float64)
-    for si in range(n_samples):
-        phi = shap_tree_single_alg2(flat, X_batch[si], n_features, covers)
-        if time_projection is not None:
-            phi = time_projection(phi)
-        phi_tree[si] = phi.transpose(0, 2, 1)
-    return phi_tree
+    out_shape: tuple,
+    base_shape: tuple,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Sum SHAP / base over a subset of trees into a fresh accumulator pair."""
+    acc_shap = np.zeros(out_shape, dtype=np.float64)
+    acc_base = np.zeros(base_shape, dtype=np.float64)
+    for tree in trees:
+        _accumulate_tree_shap(
+            tree, X_input, n_features, time_projection, n_times_out, acc_shap, acc_base
+        )
+    return acc_shap, acc_base
 
 
-def _compute_tree_shap(
-    tree, X_input, n_features, time_projection, n_times_out, batch_size: int | None = None
-):
-    """Compute SHAP for all samples on a single tree."""
+def _accumulate_tree_shap(
+    tree,
+    X_input: np.ndarray,
+    n_features: int,
+    time_projection,
+    n_times_out: int,
+    acc_shap: np.ndarray,
+    acc_base: np.ndarray,
+) -> None:
+    """Add one tree's SHAP / base contribution into ``acc_shap`` / ``acc_base``.
+
+    The structural TreeSHAP recursion fills a ``(batch, n_features, n_leaves)``
+    weight tensor; the ``(n_causes, n_times)`` leaf values are folded in by a
+    single ``W @ leaf_table_2d`` matmul.  When ``times`` is a small subset, the
+    leaf table is projected onto those columns *first*, so the matmul's right
+    operand is ``n_causes * len(times)`` wide rather than the full grid.
+    """
     flat, leaf_counts = _get_flat_and_leaf_counts(tree)
     if leaf_counts is None:
         raise RuntimeError("Could not determine leaf sample counts for SHAP cover computation.")
@@ -255,26 +283,38 @@ def _compute_tree_shap(
         leaf_counts,
     )
 
-    base = _base_value(flat, covers)
+    leaf_table = flat.leaf_table  # (n_leaves, n_causes, n_times_full)
+    n_leaves, n_causes = leaf_table.shape[0], leaf_table.shape[1]
+
+    base = _base_value(flat, covers)  # (n_causes, n_times_full)
     if time_projection is not None:
+        leaf_table = time_projection(leaf_table)
         base = time_projection(base)
+    acc_base += base.T
+
+    leaf_table_2d = np.ascontiguousarray(leaf_table.reshape(n_leaves, n_causes * n_times_out))
 
     n_samples = len(X_input)
-    if batch_size is None or batch_size >= n_samples:
-        phi_tree = _shap_tree_samples(
-            flat, X_input, n_features, covers, time_projection, n_times_out
+    batch_size = max(1, min(n_samples, _W_BATCH_BYTES // max(1, n_features * n_leaves * 8)))
+    for start in range(0, n_samples, batch_size):
+        end = min(start + batch_size, n_samples)
+        b = end - start
+        weights = shap_tree_weights(
+            flat.features,
+            flat.split_values,
+            flat.left_children,
+            flat.right_children,
+            flat.is_leaf_flags,
+            flat.leaf_idx_of_node,
+            covers,
+            X_input[start:end],
+            n_features,
+            n_leaves,
+        )  # (b, n_features, n_leaves)
+        phi = (weights.reshape(b * n_features, n_leaves) @ leaf_table_2d).reshape(
+            b, n_features, n_causes, n_times_out
         )
-    else:
-        phi_tree = np.zeros(
-            (n_samples, n_features, n_times_out, flat.leaf_table.shape[1]), dtype=np.float64
-        )
-        for start in range(0, n_samples, batch_size):
-            end = min(start + batch_size, n_samples)
-            phi_tree[start:end] = _shap_tree_samples(
-                flat, X_input[start:end], n_features, covers, time_projection, n_times_out
-            )
-
-    return phi_tree, base.T
+        acc_shap[start:end] += phi.transpose(0, 1, 3, 2)
 
 
 def _base_value(flat: FlatTree, covers: np.ndarray) -> np.ndarray:

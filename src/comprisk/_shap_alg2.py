@@ -1,11 +1,20 @@
-"""Algorithm 2 TreeSHAP for comprisk — numba-jitted O(L·D²)."""
+"""Algorithm 2 TreeSHAP for comprisk — numba-jitted O(L·D²).
+
+The recursion produces only the *structural* TreeSHAP weights — one scalar
+per ``(leaf, path-feature)`` — accumulated into an ``(n_features, n_leaves)``
+matrix ``W``.  The leaf values (``(n_causes, n_times)`` CIF tensors) never
+enter the hot recursion; SHAP is linear in the leaf value, so
+
+    phi = W @ leaf_table.reshape(n_leaves, n_causes * n_times)
+
+recovers the attributions in a single BLAS matmul (see ``_shap.py``).  This
+keeps the ``n_causes * n_times`` factor out of the L·D² inner loop.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 from numba import njit
-
-from comprisk._tree_flat import FlatTree
 
 # ---------------------------------------------------------------------------
 # Path operations (EXTEND / UNWIND / unwound_path_sum)
@@ -90,7 +99,6 @@ def _tree_shap_recursive(
     right_children,
     is_leaf_flags,
     leaf_idx_of_node,
-    leaf_table,
     covers,
     node,
     unique_depth,
@@ -102,7 +110,7 @@ def _tree_shap_recursive(
     parent_z,
     parent_o,
     parent_feat,
-    phi,
+    W,
 ):
     """Algorithm 2 — recursive descent with EXTEND / UNWIND.
 
@@ -111,6 +119,11 @@ def _tree_shap_recursive(
     ``my_offset = path_offset + unique_depth + 1`` (mirroring C++
     ``unique_path = parent_unique_path + unique_depth + 1``), then
     extends it.  Children receive ``my_offset`` as their parent offset.
+
+    At each leaf it writes the structural weight for every path feature
+    into ``W[feature, leaf_idx]`` — the leaf value is multiplied in later
+    by a single matmul, so this loop carries no ``n_causes * n_times``
+    factor.
     """
     my_offset = path_offset + unique_depth + 1
 
@@ -132,12 +145,12 @@ def _tree_shap_recursive(
         parent_feat,
     )
 
-    n_causes = leaf_table.shape[1]
-    n_times = leaf_table.shape[2]
-
     if is_leaf_flags[node]:
         leaf_idx = leaf_idx_of_node[node]
         for i in range(1, unique_depth + 1):
+            feat = path_feature[my_offset + i]
+            if feat < 0:
+                continue
             w = _unwound_path_sum(
                 path_z[my_offset:],
                 path_o[my_offset:],
@@ -145,13 +158,7 @@ def _tree_shap_recursive(
                 unique_depth,
                 i,
             )
-            feat = path_feature[my_offset + i]
-            if feat < 0:
-                continue
-            scale = w * (path_o[my_offset + i] - path_z[my_offset + i])
-            for c in range(n_causes):
-                for t in range(n_times):
-                    phi[feat, c, t] += scale * leaf_table[leaf_idx, c, t]
+            W[feat, leaf_idx] += w * (path_o[my_offset + i] - path_z[my_offset + i])
         return
 
     feat = features[node]
@@ -204,7 +211,6 @@ def _tree_shap_recursive(
         right_children,
         is_leaf_flags,
         leaf_idx_of_node,
-        leaf_table,
         covers,
         hot,
         child_depth,
@@ -216,7 +222,7 @@ def _tree_shap_recursive(
         hot_z_frac * incoming_z,
         incoming_o,
         feat,
-        phi,
+        W,
     )
 
     # Recurse cold child (branch NOT followed by sample x)
@@ -228,7 +234,6 @@ def _tree_shap_recursive(
         right_children,
         is_leaf_flags,
         leaf_idx_of_node,
-        leaf_table,
         covers,
         cold,
         child_depth,
@@ -240,57 +245,98 @@ def _tree_shap_recursive(
         cold_z_frac * incoming_z,
         0.0,
         feat,
-        phi,
+        W,
     )
 
 
 # ---------------------------------------------------------------------------
-# Public wrapper (single tree, single sample)
+# Driver: structural weights for a batch of samples on one (flattened) tree
 # ---------------------------------------------------------------------------
 
 
-def shap_tree_single_alg2(
-    flat: FlatTree, x: np.ndarray, n_features: int, covers: np.ndarray
-) -> np.ndarray:
-    """TreeSHAP Algorithm 2 — O(L·D²) per sample."""
-    n_causes, n_times = flat.leaf_table.shape[1:]
-    phi = np.zeros((n_features, n_causes, n_times), dtype=np.float64)
+@njit(cache=True, nogil=True)
+def _tree_height(left_children, right_children, is_leaf_flags) -> int:
+    """Length of the longest root-to-leaf path (iterative DFS, no recursion)."""
+    n_nodes = is_leaf_flags.shape[0]
+    depth = np.zeros(n_nodes, dtype=np.int64)
+    stack = np.empty(n_nodes, dtype=np.int64)
+    stack[0] = 0
+    top = 1
+    h = 0
+    while top > 0:
+        top -= 1
+        node = stack[top]
+        if is_leaf_flags[node]:
+            if depth[node] > h:
+                h = depth[node]
+        else:
+            for child in (left_children[node], right_children[node]):
+                depth[child] = depth[node] + 1
+                stack[top] = child
+                top += 1
+    return h
 
-    max_depth = len(flat.features)
-    # Worst-case offset sequence: 0, 1, 3, 6, 10, ... (triangular numbers)
-    # At depth d, offset = d*(d+1)/2.  Reserve enough for d = max_depth+1.
-    max_offset = (max_depth + 2) * (max_depth + 3) // 2 + 4
+
+def shap_tree_weights(
+    features: np.ndarray,
+    split_values: np.ndarray,
+    left_children: np.ndarray,
+    right_children: np.ndarray,
+    is_leaf_flags: np.ndarray,
+    leaf_idx_of_node: np.ndarray,
+    covers: np.ndarray,
+    X: np.ndarray,
+    n_features: int,
+    n_leaves: int,
+) -> np.ndarray:
+    """Structural TreeSHAP weights for a batch of samples on one tree.
+
+    Returns ``W`` of shape ``(n_samples, n_features, n_leaves)`` such that
+    ``W[s] @ leaf_table.reshape(n_leaves, -1)`` is sample ``s``'s SHAP matrix
+    (flattened over ``n_causes * n_times``).  The per-sample loop stays in
+    Python — the recursion is jitted, but a recursive ``@njit`` function
+    called from *within* another ``@njit`` function is a known crasher, so
+    the driver itself is not jitted.
+    """
+    n_samples = X.shape[0]
+    W = np.zeros((n_samples, n_features, n_leaves), dtype=np.float64)
+
+    # The recursion's scratch path-arrays grow with the *tree height* (the
+    # offset sequence is triangular in recursion depth: 0, 1, 3, 6, ...), not
+    # with the node count — sizing them by ``n_nodes`` would over-allocate by
+    # ~10^4x on a deep, wide tree and dominate the runtime.
+    height = int(_tree_height(left_children, right_children, is_leaf_flags))
+    max_offset = (height + 2) * (height + 3) // 2 + 4
     path_feature = np.full(max_offset, -1, dtype=np.int64)
     path_z = np.zeros(max_offset, dtype=np.float64)
     path_o = np.zeros(max_offset, dtype=np.float64)
     path_w = np.zeros(max_offset, dtype=np.float64)
-
-    # Seed a dummy sentinel at index 0 so the initial copy has something valid
-    path_feature[0] = -1
     path_z[0] = 1.0
     path_o[0] = 1.0
     path_w[0] = 1.0
 
-    _tree_shap_recursive(
-        x,
-        flat.features,
-        flat.split_values,
-        flat.left_children,
-        flat.right_children,
-        flat.is_leaf_flags,
-        flat.leaf_idx_of_node,
-        flat.leaf_table,
-        covers,
-        0,
-        0,
-        path_feature,
-        path_z,
-        path_o,
-        path_w,
-        0,
-        1.0,
-        1.0,
-        -1,
-        phi,
-    )
-    return phi
+    for si in range(n_samples):
+        W_one = np.zeros((n_features, n_leaves), dtype=np.float64)
+        _tree_shap_recursive(
+            X[si],
+            features,
+            split_values,
+            left_children,
+            right_children,
+            is_leaf_flags,
+            leaf_idx_of_node,
+            covers,
+            0,
+            0,
+            path_feature,
+            path_z,
+            path_o,
+            path_w,
+            0,
+            1.0,
+            1.0,
+            -1,
+            W_one,
+        )
+        W[si] = W_one
+    return W

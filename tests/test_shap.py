@@ -212,6 +212,57 @@ def test_shap_single_time_point():
 
 
 # ---------------------------------------------------------------------------
+# Custom-times path equals full-grid path projected (the matmul folds the
+# time-projection into the leaf table; verify it agrees with project-after).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("mode", ["default", "reference"])
+def test_shap_custom_times_equals_projected_full_grid(mode):
+    X, time, event = _make_synthetic_cr(n=80)
+    f = CompetingRiskForest(n_estimators=8, random_state=3, mode=mode, max_depth=5).fit(
+        X, time, event
+    )
+
+    full_grid = f.unique_times_
+    # A mix of grid points, an interpolated point, and one before the grid.
+    custom = np.array([full_grid[0] - 1.0, full_grid[len(full_grid) // 3], full_grid[-1]])
+
+    shap_custom, base_custom = f.shap_values(X, times=custom)
+    shap_full, base_full = f.shap_values(X)
+
+    # Right-continuous step projection of the full-grid result onto `custom`.
+    idx = np.searchsorted(full_grid, custom, side="right") - 1
+    take = np.clip(idx, 0, None)
+    before = idx < 0
+    shap_proj = shap_full[:, :, take, :].copy()
+    base_proj = base_full[take, :].copy()
+    shap_proj[:, :, before, :] = 0.0
+    base_proj[before, :] = 0.0
+
+    assert np.allclose(shap_custom, shap_proj, atol=1e-12, rtol=0)
+    assert np.allclose(base_custom, base_proj, atol=1e-12, rtol=0)
+
+
+# ---------------------------------------------------------------------------
+# Many-tree forest with thread parallelism: chunked-worker reduction must
+# give the same answer as the serial path.
+# ---------------------------------------------------------------------------
+
+
+def test_shap_parallel_matches_serial():
+    X, time, event = _make_synthetic_cr(n=120)
+    f = CompetingRiskForest(n_estimators=12, random_state=11, max_depth=5, n_jobs=1).fit(
+        X, time, event
+    )
+    shap_ser, base_ser = f.shap_values(X)
+    f.n_jobs = 4  # same trees, only the cross-tree reduction order changes
+    shap_par, base_par = f.shap_values(X)
+    assert np.allclose(shap_par, shap_ser, atol=1e-10, rtol=1e-10)
+    assert np.allclose(base_par, base_ser, atol=1e-10, rtol=1e-10)
+
+
+# ---------------------------------------------------------------------------
 # Compatibility: slice extraction for shap.summary_plot
 # ---------------------------------------------------------------------------
 

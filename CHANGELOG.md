@@ -35,6 +35,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to ≤ 3e-6 on `pbc` (n = 276) and `follic` (n = 541) for LASSO / MCP /
   SCAD; the `lambda → 0` limit reproduces `FineGrayRegression` to ≤ 1e-3.
 
+### Changed
+
+- `CompetingRiskForest.shap_values()` is dramatically faster (SUN-74),
+  with no change in output (additivity and bit-exact agreement with
+  `shap.TreeExplainer` at a fixed `(cause, time)` slice are preserved).
+  The TreeSHAP recursion now emits only the *structural* per-`(leaf,
+  feature)` weights; the `(n_causes, n_times)` leaf tensors are folded
+  back in by a single BLAS matmul per tree (`phi = W @ leaf_table_2d`),
+  taking the `n_causes × n_times` factor out of the hot recursion. When a
+  small `times=` subset is requested the leaf table is projected onto
+  those columns *before* the matmul. Two further fixes: the recursion's
+  scratch path-arrays are now sized by tree height rather than node count
+  (they were over-allocated by ~10⁴× on deep, wide trees — the dominant
+  cost), and per-tree contributions are reduced in worker-local
+  accumulators instead of one full-array `+=` per tree. Measured ~14×
+  faster on an 80-tree, depth-15 forest (n_test = 500: 171 s → 12 s).
+
 ## [0.4.0] — 2026-05-11
 
 Broadens comprisk from "CR random forest" to a CR toolkit: the four
