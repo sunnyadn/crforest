@@ -1,4 +1,4 @@
-"""comprisk: Python toolkit for competing risks (forest today; regression in v0.4)."""
+"""comprisk: Python toolkit for competing risks (forest, Fine-Gray, Aalen-Johansen, Gray, CSC)."""
 
 from comprisk._sklearn_compat import Surv
 from comprisk.cause_specific_cox import CauseSpecificCox
@@ -14,7 +14,7 @@ from comprisk.metrics import (
 )
 from comprisk.penalized_fine_gray import PenalizedFineGrayRegression
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = [
     "CauseSpecificCox",

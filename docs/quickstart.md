@@ -296,16 +296,26 @@ top_features = np.argsort(mean_abs)[::-1][:5]
 
 # Slice for a fixed (time, cause) — compatible with shap.summary_plot
 shap_slice = shap[:, :, -1, 0]   # last timepoint, cause 1  (n, p)
+
+# "Risk-score" SHAP — collapse the time axis to one scalar per cause
+# *before* the attribution (the (n, p, n_times, n_causes) tensor is never
+# built). Output shape (n, p, n_causes). "sum" == shap.sum(axis=2) exactly;
+# "trapezoid" is the grid-spacing-aware time integral.
+risk_shap, risk_base = forest.shap_values(X[:10], time_aggregate="sum")
 ```
 
 Backed by Lundberg (2018) Algorithm 2; bit-exact to ``shap.TreeExplainer``
 at any fixed ``(cause, time)`` slice. Wall time scales linearly with
-``n_explain`` and ``n_times`` — pass a focused ``times=`` grid (clinical
-horizons) rather than the default full event-time grid.
+``n_explain`` and the requested grid width — pass a focused ``times=`` grid
+(clinical horizons) or a ``time_aggregate=`` rather than the default full
+event-time grid.
 
-Indicative wall (10-core commodity machine, p = 58, ntree = 100, n_times = 10):
-~40 s at n_train = 10k, n_explain = 200; ~3.5 min at n_train = 10k, n_explain = 1000.
-Thread parallelism saturates near ``n_jobs ≈ 4`` (memory-bandwidth bound).
+As of 0.5.0 this is ~14×+ faster (SUN-74 — the ``n_causes × n_times`` factor
+moved out of the TreeSHAP recursion into one BLAS matmul; deep/wide trees see
+the larger gain). Indicative wall on a commodity 10-core machine: ~0.2 s for
+50 explained rows over the full 200-point grid on an 80-tree depth-15 forest;
+~5 s for 200 rows on a 100-tree, p = 58, n_train = 10k forest. Thread
+parallelism saturates near ``n_jobs ≈ 4`` (memory-bandwidth bound).
 
 ## 8. Performance levers
 

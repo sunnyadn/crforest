@@ -11,7 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `from crforest import …` was the supported form for those versions. See
 > the 0.3.1 entry below for the migration recipe.
 
-## [Unreleased]
+## [0.5.0] — 2026-05-12
+
+Adds penalized variable selection for Fine-Gray regression — the first
+such estimator in the Python competing-risks ecosystem (SUN-73) — and a
+large speedup to the forest's cause-specific TreeSHAP (SUN-74).
 
 ### Added
 
@@ -34,9 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Fu et al. 2017) coefficients **and** sandwich SEs along the full path
   to ≤ 3e-6 on `pbc` (n = 276) and `follic` (n = 541) for LASSO / MCP /
   SCAD; the `lambda → 0` limit reproduces `FineGrayRegression` to ≤ 1e-3.
-
-### Added
-
 - `CompetingRiskForest.shap_values(time_aggregate="sum" | "trapezoid")`
   (SUN-74) — "risk-score" SHAP that collapses the time axis to one scalar
   per cause *before* the attribution, returning
@@ -63,8 +64,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dominant cost), and per-tree contributions are reduced in worker-local
   accumulators instead of one full-array `+=` per tree; `covers` and the
   baseline are cached on the (flattened) tree so repeated `shap_values`
-  calls don't recompute them. Measured ~14× faster on an 80-tree,
-  depth-15 forest (n_test = 500: 171 s → 12 s).
+  calls don't recompute them. Measured ~14× on an 80-tree depth-15 forest
+  (n_test = 500: 171 s → 12 s); the gain grows with tree size and with how
+  few `times=` are requested — on the trees in a real 75 k-row, 500-tree
+  CHF model (~25 k leaves each) the prior implementation was ~7.8 s/row.
+- The `shap_explain` example (`examples/shap_explain.py`) is now an
+  interactive marimo notebook (still a plain, git-friendly `.py`) with
+  sliders for forest size and the subject under inspection; adds an
+  `examples` optional-dependency group (`marimo`, `matplotlib`).
 
 ## [0.4.0] — 2026-05-11
 

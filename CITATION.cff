@@ -14,11 +14,15 @@ abstract: >-
   K-sample test (cmprsk::cuminc Tests-parity), cause-specific Cox PH
   (survival::coxph-parity), and a competing-risks model-evaluation harness
   with IPCW time-dependent AUC / Brier / iAUC / IBS and quantile-decile
-  calibration data (riskRegression::Score / plotCalibration-parity).
-  Renamed from `crforest` in 0.3.1.
+  calibration data (riskRegression::Score / plotCalibration-parity). As of
+  v0.5 also ships penalized Fine-Gray regression (LASSO / ridge /
+  elastic-net / MCP / SCAD via IPCW-weighted cyclic coordinate descent,
+  cross-validated penalty selection; crrp::crrp-parity coefficients and
+  sandwich SEs) and a much faster forest TreeSHAP. Renamed from `crforest`
+  in 0.3.1.
 type: software
-version: 0.4.0
-date-released: 2026-05-11
+version: 0.5.0
+date-released: 2026-05-12
 doi: 10.5281/zenodo.19876282
 identifiers:
   - type: doi

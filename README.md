@@ -150,8 +150,7 @@ cs = CauseSpecificCox(cause=1).fit(X, time=time, event=event)
 ```
 
 Penalized variable selection for the Fine-Gray model (LASSO / ridge /
-elastic-net / MCP / SCAD) — `on main`, no released equivalent elsewhere in
-Python:
+elastic-net / MCP / SCAD) — no equivalent elsewhere in Python:
 
 ```python
 from comprisk import PenalizedFineGrayRegression
@@ -192,7 +191,7 @@ standalone API), use [lifelines](https://lifelines.readthedocs.io/) or
 | **v0.4** | `gray_test` (Gray's K-sample log-rank)                | Shipped              |
 | **v0.4** | `CauseSpecificCox` (CR-aware censoring)               | Shipped              |
 | **v0.4** | `score_cr` / `calibration_cr` (CR-aware evaluation)   | Shipped              |
-| v0.5     | `PenalizedFineGrayRegression` (LASSO/ridge/elastic-net/MCP/SCAD) | On `main`  |
+| **v0.5** | `PenalizedFineGrayRegression` (LASSO/ridge/elastic-net/MCP/SCAD) | Shipped    |
 | v1.0     | API freeze + JMLR MLOSS submission                    | Planned              |
 | v1.1     | Full GPU rewrite                                      | Planned              |
 
