@@ -12,6 +12,7 @@ from comprisk.metrics import (
     concordance_index_cr,
     concordance_index_uno_cr,
 )
+from comprisk.penalized_fine_gray import PenalizedFineGrayRegression
 
 __version__ = "0.4.0"
 
@@ -21,6 +22,7 @@ __all__ = [
     "CumulativeIncidence",
     "FineGrayRegression",
     "GrayTestResult",
+    "PenalizedFineGrayRegression",
     "ScoreResult",
     "Surv",
     "__version__",

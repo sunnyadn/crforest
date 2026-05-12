@@ -149,6 +149,22 @@ print(result.stat, result.pvalue, result.df)
 cs = CauseSpecificCox(cause=1).fit(X, time=time, event=event)
 ```
 
+Penalized variable selection for the Fine-Gray model (LASSO / ridge /
+elastic-net / MCP / SCAD) — `on main`, no released equivalent elsewhere in
+Python:
+
+```python
+from comprisk import PenalizedFineGrayRegression
+
+# Cyclic coordinate descent on the IPCW-weighted partial likelihood,
+# warm-started along a 100-point lambda path. cv=K picks lambda by the
+# cross-validated partial-likelihood deviance; coefficients + sandwich SEs
+# match R crrp::crrp() (Fu et al. 2017) along the whole path to ~1e-6.
+pen = PenalizedFineGrayRegression(penalty="lasso", cv=5).fit(X, time=time, event=event)
+print(pen.coef_, pen.lambda_min_, pen.lambda_1se_)
+pen.coef_path_                                        # (p, n_lambda)
+```
+
 Detailed walkthroughs — additivity checks, global SHAP importance, sklearn-
 compatible slicing, performance caveats, rfSRC threshold compatibility — in
 [docs/quickstart.md](docs/quickstart.md), which also covers data format,
@@ -176,6 +192,7 @@ standalone API), use [lifelines](https://lifelines.readthedocs.io/) or
 | **v0.4** | `gray_test` (Gray's K-sample log-rank)                | Shipped              |
 | **v0.4** | `CauseSpecificCox` (CR-aware censoring)               | Shipped              |
 | **v0.4** | `score_cr` / `calibration_cr` (CR-aware evaluation)   | Shipped              |
+| v0.5     | `PenalizedFineGrayRegression` (LASSO/ridge/elastic-net/MCP/SCAD) | On `main`  |
 | v1.0     | API freeze + JMLR MLOSS submission                    | Planned              |
 | v1.1     | Full GPU rewrite                                      | Planned              |
 

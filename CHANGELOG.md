@@ -11,6 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `from crforest import …` was the supported form for those versions. See
 > the 0.3.1 entry below for the migration recipe.
 
+## [Unreleased]
+
+### Added
+
+- `PenalizedFineGrayRegression` — penalized variable selection for the
+  Fine-Gray subdistribution-hazards model (SUN-73), the first such
+  estimator in the Python competing-risks ecosystem. Cyclic coordinate
+  descent on the IPCW-weighted partial (pseudo-)likelihood with
+  soft-/firm-thresholding updates, warm-started along a data-driven
+  `lambda` path from `lambda_max` (the smallest value zeroing every
+  penalized coefficient) down to `lambda_min_ratio * lambda_max`.
+  Penalties: LASSO, ridge, elastic-net (`l1_ratio` blend), MCP
+  (Zhang 2010) and SCAD (Fan & Li 2001). Reuses the v0.4 Fine-Gray IPCW
+  machinery (no materialized Geskus expansion). `cv=K` selects `lambda`
+  by the Verweij–van Houwelingen cross-validated partial-likelihood
+  deviance (`lambda_min_`, `lambda_1se_`); otherwise BIC over the path.
+  Sandwich SEs along the path follow Fu et al. (2017). sklearn-compatible
+  (`BaseEstimator`; `fit` / `predict` / `predict_cumulative_incidence`;
+  `coef_path_`, `lambdas_`, `bic_path_`, …). Matches R `crrp::crrp()`
+  (Fu et al. 2017) coefficients **and** sandwich SEs along the full path
+  to ≤ 3e-6 on `pbc` (n = 276) and `follic` (n = 541) for LASSO / MCP /
+  SCAD; the `lambda → 0` limit reproduces `FineGrayRegression` to ≤ 1e-3.
+
 ## [0.4.0] — 2026-05-11
 
 Broadens comprisk from "CR random forest" to a CR toolkit: the four

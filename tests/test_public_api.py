@@ -12,6 +12,8 @@ def test_top_level_exports():
     assert hasattr(comprisk, "CauseSpecificCox")
     assert hasattr(comprisk, "gray_test")
     assert hasattr(comprisk, "GrayTestResult")
+    # penalized Fine-Gray (variable selection)
+    assert hasattr(comprisk, "PenalizedFineGrayRegression")
 
 
 def test_private_modules_not_in_all():
@@ -31,6 +33,7 @@ def test_public_symbols_in_all():
         "CauseSpecificCox",
         "gray_test",
         "GrayTestResult",
+        "PenalizedFineGrayRegression",
     ):
         assert name in comprisk.__all__
 
