@@ -56,7 +56,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, clone
 
 from comprisk._sklearn_compat import is_structured_survival_y, unpack_structured_y
 from comprisk.fine_gray import (
@@ -305,20 +305,27 @@ def _fit_path(
     converged_flags = np.zeros(n_lambda, dtype=bool)
     last_w = np.zeros((n, n_lambda))
 
-    res0 = _psh_working(
-        np.zeros(n),
-        time,
-        event,
-        cg_index,
-        ncg,
-        cause,
-        event_times,
-        g_at_event_times,
-        g_at_subject_times,
-    )
-    if res0 is None:
+    def work(eta_):
+        return _psh_working(
+            eta_,
+            time,
+            event,
+            cg_index,
+            ncg,
+            cause,
+            event_times,
+            g_at_event_times,
+            g_at_subject_times,
+        )
+
+    # ``res`` always holds the working quantities at the current ``eta``:
+    # carried forward across coordinate sweeps (the post-sweep state of one
+    # iteration is the pre-sweep state of the next) and across lambdas
+    # (``eta`` is warm-started). One ``_psh_working`` call per sweep, not two.
+    res = work(np.zeros(n))
+    if res is None:
         raise RuntimeError("weighted Fine-Gray risk set is degenerate at beta = 0")
-    null_dev = -2.0 * res0[2]
+    null_dev = -2.0 * res[2]
 
     if prox_kind == "mcp":
         prox = lambda z, l1, l2, v: _prox_mcp(z, l1, l2, gamma, v)  # noqa: E731
@@ -333,26 +340,13 @@ def _fit_path(
         lam = float(lambdas[li])
         l1 = lam * alpha
         l2 = lam * (1.0 - alpha)
-        cur_dev = 0.0
-        w_at_sol = res0[1]
+        cur_dev = -2.0 * res[2]
+        w_at_sol = res[1]
         for _ in range(max_iter):
             if cur_dev - null_dev > 0.99 * null_dev:
                 break
             n_iter[li] += 1
-            res = _psh_working(
-                eta,
-                time,
-                event,
-                cg_index,
-                ncg,
-                cause,
-                event_times,
-                g_at_event_times,
-                g_at_subject_times,
-            )
-            if res is None:
-                break
-            st, w, _, _ = res
+            st, w = res[0], res[1]
             with np.errstate(divide="ignore", invalid="ignore"):
                 resid = np.where(w > 0.0, st / w, 0.0)  # working residual z - eta
             beta_old = beta.copy()
@@ -377,27 +371,19 @@ def _fit_path(
                     beta[j] = bj_new
                     eta += shift * xj
                     resid -= shift * xj
-            res_post = _psh_working(
-                eta,
-                time,
-                event,
-                cg_index,
-                ncg,
-                cause,
-                event_times,
-                g_at_event_times,
-                g_at_subject_times,
-            )
-            if res_post is None:
+            res = work(eta)
+            if res is None:
                 break
-            w_at_sol = res_post[1]
-            cur_dev = -2.0 * res_post[2]
+            w_at_sol = res[1]
+            cur_dev = -2.0 * res[2]
             if _converged(beta, beta_old, tol):
                 converged_flags[li] = True
                 break
         coef_path[:, li] = beta
         deviance[li] = cur_dev
         last_w[:, li] = w_at_sol
+        if res is None:
+            break
     return coef_path, n_iter, deviance, null_dev, converged_flags, last_w
 
 
@@ -501,19 +487,10 @@ def _sandwich_se_path(
 
 @dataclass
 class _PFGState:
-    """Non-public artifacts needed by ``predict`` / cross-validation."""
+    """Non-public artifacts needed by ``predict_cumulative_incidence``."""
 
-    x_original: np.ndarray
-    time: np.ndarray
-    event_internal: np.ndarray
-    cg_index: np.ndarray
-    cengroups: np.ndarray
-    cause: int
-    event_times: np.ndarray
-    g_at_event_times: np.ndarray
-    g_at_subject_times: np.ndarray
     baseline_times: np.ndarray
-    baseline_hazard_increments: np.ndarray
+    baseline_cum_hazard: np.ndarray
 
 
 class PenalizedFineGrayRegression(BaseEstimator):
@@ -776,6 +753,8 @@ class PenalizedFineGrayRegression(BaseEstimator):
         -------
         self
         """
+        if self.cv is not None and not (isinstance(self.cv, (int, np.integer)) and self.cv >= 2):
+            raise ValueError("cv must be None or an integer >= 2")
         time_arr, event_arr = self._unpack_y(y, time, event)
         prox_kind, alpha, gamma = self._resolve_penalty()
         (
@@ -798,6 +777,9 @@ class PenalizedFineGrayRegression(BaseEstimator):
             scale = np.ones(p)
             x_kept = x
         scale_keep = scale[keep]
+        # Fortran order makes the per-coordinate column slices in the
+        # coordinate-descent sweep contiguous (cache-friendly).
+        x_kept = np.asfortranarray(x_kept)
 
         if self.lambdas is not None:
             lambdas = np.sort(np.asarray(self.lambdas, dtype=np.float64))[::-1].copy()
@@ -854,26 +836,11 @@ class PenalizedFineGrayRegression(BaseEstimator):
         self.se_path_ = se_path
         self.lambdas_ = lambdas
         self.deviance_path_ = deviance_path
-        self.loglik_path_ = -0.5 * deviance_path
         self.null_deviance_ = null_dev
         self.bic_path_ = bic_path
         self.n_iter_path_ = n_iter_path
         self.converged_path_ = conv_flags
         self.n_features_in_ = p
-
-        self._state = _PFGState(
-            x_original=x,
-            time=time_arr,
-            event_internal=event_internal,
-            cg_index=cg_index,
-            cengroups=cengroups,
-            cause=self.cause,
-            event_times=event_times,
-            g_at_event_times=g_at_event_times,
-            g_at_subject_times=g_at_subject_times,
-            baseline_times=np.empty(0),
-            baseline_hazard_increments=np.empty(0),
-        )
 
         # lambda selection
         self.lambda_min_ = None
@@ -881,8 +848,6 @@ class PenalizedFineGrayRegression(BaseEstimator):
         self.cv_deviance_ = None
         self.cv_deviance_se_ = None
         if self.cv is not None:
-            if not (isinstance(self.cv, (int, np.integer)) and self.cv >= 2):
-                raise ValueError("cv must be None or an integer >= 2")
             cvm, cvse = self._cross_validate(
                 X, time_arr, event_arr, cengroup, lambdas, alpha, gamma, prox_kind
             )
@@ -904,7 +869,7 @@ class PenalizedFineGrayRegression(BaseEstimator):
         self.lambda_ = float(lambdas[sel])
         self.n_iter_ = int(n_iter_path[sel])
         self.converged_ = bool(conv_flags[sel])
-        self.log_likelihood_ = float(self.loglik_path_[sel])
+        self.log_likelihood_ = float(-0.5 * deviance_path[sel])
 
         bt, bdl = _baseline_subdist_hazard(
             self.coef_,
@@ -917,8 +882,7 @@ class PenalizedFineGrayRegression(BaseEstimator):
             g_at_event_times,
             g_at_subject_times,
         )
-        self._state.baseline_times = bt
-        self._state.baseline_hazard_increments = bdl
+        self._state = _PFGState(baseline_times=bt, baseline_cum_hazard=np.cumsum(bdl))
         return self
 
     # -- cross-validation ---------------------------------------------------
@@ -956,18 +920,6 @@ class PenalizedFineGrayRegression(BaseEstimator):
 
         n_lambda = lambdas.shape[0]
         dev_per_fold = np.full((k, n_lambda), np.nan)
-        base_kwargs = dict(
-            penalty=self.penalty,
-            l1_ratio=self.l1_ratio,
-            gamma=self.gamma,
-            lambdas=lambdas,
-            standardize=self.standardize,
-            cause=self.cause,
-            cencode=self.cencode,
-            cv=None,
-            max_iter=self.max_iter,
-            tol=self.tol,
-        )
         for fi in range(k):
             train = fold_of != fi
             test = ~train
@@ -976,7 +928,7 @@ class PenalizedFineGrayRegression(BaseEstimator):
             ):
                 continue
             cg_train = None if cengroup is None else np.asarray(cengroup)[train]
-            sub = PenalizedFineGrayRegression(**base_kwargs)
+            sub = clone(self).set_params(lambdas=lambdas, cv=None)
             sub.fit(x[train], time=time_arr[train], event=event_arr[train], cengroup=cg_train)
             test_cause = test & (event_full == self.cause)
             if not np.any(test_cause):
@@ -1045,7 +997,7 @@ class PenalizedFineGrayRegression(BaseEstimator):
         if X.ndim != 2 or X.shape[1] != self.n_features_in_:
             raise ValueError(f"X must have shape (n_samples, {self.n_features_in_})")
         eta = X @ self.coef_
-        cum_haz = np.cumsum(self._state.baseline_hazard_increments)
+        cum_haz = self._state.baseline_cum_hazard
         if times is None:
             lam_at = cum_haz
         else:
