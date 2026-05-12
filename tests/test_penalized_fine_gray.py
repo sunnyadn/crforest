@@ -234,6 +234,17 @@ def test_cv_requires_integer_at_least_two():
         PenalizedFineGrayRegression(cv=1).fit(x, time=time, event=event)
 
 
+def test_parallel_cv_matches_serial():
+    x, time, event = _toy_cr(n=300, seed=2)
+    common = dict(penalty="lasso", n_lambda=25, cv=4, cv_random_state=0)
+    serial = PenalizedFineGrayRegression(n_jobs=1, **common).fit(x, time=time, event=event)
+    parallel = PenalizedFineGrayRegression(n_jobs=2, **common).fit(x, time=time, event=event)
+    np.testing.assert_array_equal(serial.cv_deviance_, parallel.cv_deviance_)
+    np.testing.assert_array_equal(serial.cv_deviance_se_, parallel.cv_deviance_se_)
+    assert serial.lambda_min_ == parallel.lambda_min_
+    np.testing.assert_array_equal(serial.coef_, parallel.coef_)
+
+
 # ---------------------------------------------------------------------------
 # Standardization invariance
 # ---------------------------------------------------------------------------

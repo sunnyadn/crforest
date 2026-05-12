@@ -56,6 +56,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from joblib import Parallel, delayed
 from sklearn.base import BaseEstimator, clone
 
 from comprisk._sklearn_compat import is_structured_survival_y, unpack_structured_y
@@ -536,6 +537,10 @@ class PenalizedFineGrayRegression(BaseEstimator):
         ``lambda``; otherwise ``lambda`` is chosen by BIC over the path.
     cv_random_state : int or None, default None
         Seed for the cross-validation fold split.
+    n_jobs : int or None, default None
+        Parallelism for the cross-validation folds (``joblib``);
+        ``None`` -> serial, ``-1`` -> all cores. The selected ``lambda``
+        is unaffected by scheduling. Unused when ``cv`` is ``None``.
     max_iter : int, default 1000
         Maximum coordinate-descent sweeps per ``lambda``.
     tol : float, default 1e-4
@@ -605,6 +610,7 @@ class PenalizedFineGrayRegression(BaseEstimator):
         cencode: int = 0,
         cv: int | None = None,
         cv_random_state: int | None = None,
+        n_jobs: int | None = None,
         max_iter: int = 1000,
         tol: float = 1e-4,
     ) -> None:
@@ -619,6 +625,7 @@ class PenalizedFineGrayRegression(BaseEstimator):
         self.cencode = cencode
         self.cv = cv
         self.cv_random_state = cv_random_state
+        self.n_jobs = n_jobs
         self.max_iter = max_iter
         self.tol = tol
 
@@ -848,9 +855,7 @@ class PenalizedFineGrayRegression(BaseEstimator):
         self.cv_deviance_ = None
         self.cv_deviance_se_ = None
         if self.cv is not None:
-            cvm, cvse = self._cross_validate(
-                X, time_arr, event_arr, cengroup, lambdas, alpha, gamma, prox_kind
-            )
+            cvm, cvse = self._cross_validate(X, time_arr, event_arr, cengroup, lambdas)
             self.cv_deviance_ = cvm
             self.cv_deviance_se_ = cvse
             i_min = int(np.nanargmin(cvm))
@@ -887,20 +892,23 @@ class PenalizedFineGrayRegression(BaseEstimator):
 
     # -- cross-validation ---------------------------------------------------
 
-    def _cross_validate(self, X, time_arr, event_arr, cengroup, lambdas, alpha, gamma, prox_kind):
+    def _cross_validate(self, X, time_arr, event_arr, cengroup, lambdas):
         """K-fold cross-validated weighted partial-likelihood deviance.
 
         Uses the Verweij & van Houwelingen (1993) cross-validated partial
         likelihood: for each held-out fold, the contribution of its
         cause-of-interest events to the *full-data* weighted partial
         likelihood is evaluated at the coefficients fitted on the other
-        folds. Returns ``(mean_deviance, deviance_se)`` per ``lambda``.
+        folds. Folds run in parallel (``n_jobs``); the result is
+        independent of how the folds are scheduled. Returns
+        ``(mean_deviance, deviance_se)`` per ``lambda``.
         """
         x = np.asarray(X, dtype=np.float64)
         time_arr = np.asarray(time_arr, dtype=np.float64)
         event_arr = np.asarray(event_arr, dtype=np.int64)
         n = x.shape[0]
         k = int(self.cv)
+        cause = self.cause
         rng = np.random.default_rng(self.cv_random_state)
         fold_of = np.tile(np.arange(k), n // k + 1)[:n]
         rng.shuffle(fold_of)
@@ -917,42 +925,44 @@ class PenalizedFineGrayRegression(BaseEstimator):
             g_s_full,
         ) = self._prepare(x, time_arr, event_arr, cengroup)
         ncg_full = cengroups_full.shape[0]
-
         n_lambda = lambdas.shape[0]
-        dev_per_fold = np.full((k, n_lambda), np.nan)
-        for fi in range(k):
+        cengroup_arr = None if cengroup is None else np.asarray(cengroup)
+        template = clone(self).set_params(lambdas=lambdas, cv=None)
+
+        def _fold(fi):
             train = fold_of != fi
             test = ~train
-            if not np.any(event_arr[train] == self.cause) or not np.any(
-                event_arr[test] == self.cause
-            ):
-                continue
-            cg_train = None if cengroup is None else np.asarray(cengroup)[train]
-            sub = clone(self).set_params(lambdas=lambdas, cv=None)
-            sub.fit(x[train], time=time_arr[train], event=event_arr[train], cengroup=cg_train)
-            test_cause = test & (event_full == self.cause)
+            if not np.any(event_arr[train] == cause) or not np.any(event_arr[test] == cause):
+                return np.full(n_lambda, np.nan)
+            cg_train = None if cengroup_arr is None else cengroup_arr[train]
+            sub = clone(template).fit(
+                x[train], time=time_arr[train], event=event_arr[train], cengroup=cg_train
+            )
+            test_cause = test & (event_full == cause)
             if not np.any(test_cause):
-                continue
+                return np.full(n_lambda, np.nan)
             eidx_test = np.searchsorted(event_times_full, time_full[test_cause])
+            dev = np.full(n_lambda, np.nan)
             for li in range(n_lambda):
-                beta = sub.coef_path_[:, li]
-                eta_full = x @ beta
+                eta_full = x @ sub.coef_path_[:, li]
                 res = _psh_working(
                     eta_full,
                     time_full,
                     event_full,
                     cg_full,
                     ncg_full,
-                    self.cause,
+                    cause,
                     event_times_full,
                     g_e_full,
                     g_s_full,
                 )
                 if res is None:
                     continue
-                log_s0 = res[3]
-                contrib = float(np.sum(eta_full[test_cause] - log_s0[eidx_test]))
-                dev_per_fold[fi, li] = -2.0 * contrib
+                dev[li] = -2.0 * float(np.sum(eta_full[test_cause] - res[3][eidx_test]))
+            return dev
+
+        n_jobs = 1 if self.n_jobs is None else self.n_jobs
+        dev_per_fold = np.vstack(Parallel(n_jobs=n_jobs)(delayed(_fold)(fi) for fi in range(k)))
 
         cvm = np.nansum(dev_per_fold, axis=0)
         n_valid = np.sum(~np.isnan(dev_per_fold), axis=0)

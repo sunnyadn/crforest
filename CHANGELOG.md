@@ -26,7 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Zhang 2010) and SCAD (Fan & Li 2001). Reuses the v0.4 Fine-Gray IPCW
   machinery (no materialized Geskus expansion). `cv=K` selects `lambda`
   by the Verweij–van Houwelingen cross-validated partial-likelihood
-  deviance (`lambda_min_`, `lambda_1se_`); otherwise BIC over the path.
+  deviance (`lambda_min_`, `lambda_1se_`), with `n_jobs` parallelizing the
+  CV folds; otherwise BIC over the path.
   Sandwich SEs along the path follow Fu et al. (2017). sklearn-compatible
   (`BaseEstimator`; `fit` / `predict` / `predict_cumulative_incidence`;
   `coef_path_`, `lambdas_`, `bic_path_`, …). Matches R `crrp::crrp()`
