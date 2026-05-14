@@ -84,13 +84,16 @@ _NUMERICAL_ZERO = 1e-10
 # Proximal / threshold operators
 #
 # Each returns the minimizer over ``b`` of
-#     (v / 2) (b - z / v)^2  +  p_lambda(|b|)
-# where ``v`` is the (scaled) curvature, ``l1 = lambda * alpha`` is the
-# L1 weight and ``l2 = lambda * (1 - alpha)`` the ridge weight. The MCP and
-# SCAD forms are the firm-thresholding rules of Breheny & Huang (2011)
-# (the regime boundaries follow the standardized-design convention common
-# to the penalized-regression literature, in which the linear-regression
-# curvature is 1).
+#     (v / 2) (b - z / v)^2  +  (l2 / 2) b^2  +  p_l1(|b|)
+# where ``v`` is the working curvature, ``l1 = lambda * alpha`` the L1 weight
+# and ``l2 = lambda * (1 - alpha)`` the ridge weight (elastic-net admixture).
+# Completing the square in the quadratic part gives effective curvature
+# ``v_eff = v + l2``; the MCP and SCAD prox formulas below are Breheny &
+# Huang (2011) Eq. (3.7) -- the general working-curvature firm-thresholding
+# rule -- with ``v_j`` taken as ``v_eff``. Eq. (3.7) generalises Eq. (2.6)
+# (the orthonormal / standardized-design case ``v = 1`` that the prior
+# crforest implementation tacitly assumed); Eq. (2.6) is wrong when ``v != 1``,
+# which is the typical regime for the Fine-Gray IRLS-style CD here.
 # ---------------------------------------------------------------------------
 
 
@@ -110,23 +113,26 @@ def _prox_lasso(z: float, l1: float, l2: float, v: float) -> float:
 
 
 def _prox_mcp(z: float, l1: float, l2: float, gamma: float, v: float) -> float:
+    # Breheny & Huang 2011 Eq. (3.7), MCP arm, with effective curvature
+    # v_eff = v + l2 from the elastic-net ridge admixture.
+    v_eff = v + l2
     if abs(z) <= l1:
         return 0.0
-    if abs(z) <= gamma * l1 * (1.0 + l2):
-        return _soft_threshold(z, l1) / (v * (1.0 + l2 - 1.0 / gamma))
-    return z / (v * (1.0 + l2))
+    if abs(z) <= gamma * l1 * v_eff:
+        return _soft_threshold(z, l1) / (v_eff - 1.0 / gamma)
+    return z / v_eff
 
 
 def _prox_scad(z: float, l1: float, l2: float, gamma: float, v: float) -> float:
+    # Breheny & Huang 2011 Eq. (3.7), SCAD arm.
+    v_eff = v + l2
     if abs(z) <= l1:
         return 0.0
-    if abs(z) <= l1 * (2.0 + l2):
-        return _soft_threshold(z, l1) / (v * (1.0 + l2))
-    if abs(z) <= gamma * l1 * (1.0 + l2):
-        return _soft_threshold(z, gamma * l1 / (gamma - 1.0)) / (
-            v * (1.0 - 1.0 / (gamma - 1.0) + l2)
-        )
-    return z / (v * (1.0 + l2))
+    if abs(z) <= l1 * (v_eff + 1.0):
+        return _soft_threshold(z, l1) / v_eff
+    if abs(z) <= gamma * l1 * v_eff:
+        return _soft_threshold(z, gamma * l1 / (gamma - 1.0)) / (v_eff - 1.0 / (gamma - 1.0))
+    return z / v_eff
 
 
 def _penalty_derivative(abs_beta: np.ndarray, lam: float, penalty: str, gamma: float) -> np.ndarray:

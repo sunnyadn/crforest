@@ -182,9 +182,34 @@ _CRRP_CASES = [
     ("follic", ["age", "hgb", "clinstg", "ch"], "status"),
 ]
 
+# SCAD and MCP coefficient-path numerical fixtures from crrp/fastcmprsk
+# are KNOWN to disagree with crforest after the Eq.(3.7) prox patch:
+# crrp's CD implements Breheny-Huang Eq.(2.6) (orthonormal v=1 form),
+# which converges to non-stationary points of the actual penalised
+# objective when working curvature v != 1 (the typical regime in
+# Fine-Gray CR fits). The patched crforest now finds genuinely lower
+# objective values at 49-50 of 50 lambdas on pbc/follic for both SCAD
+# and MCP. Correctness for SCAD/MCP is gated by
+# `test_objective_dominates_crrp` below; the legacy fixture matches
+# are kept as xfail so the test still flags any future regression
+# back to the buggy behaviour.
+_SCAD_MCP_XFAIL = pytest.mark.xfail(
+    strict=True,
+    reason="crrp implements Breheny-Huang Eq.(2.6) v=1 prox; the patched "
+    "crforest implements Eq.(3.7) general-v and is correct -- "
+    "see test_objective_dominates_crrp.",
+)
+
 
 @pytest.mark.parametrize("name, cov_cols, event_col", _CRRP_CASES)
-@pytest.mark.parametrize("penalty", ["lasso", "mcp", "scad"])
+@pytest.mark.parametrize(
+    "penalty",
+    [
+        "lasso",
+        pytest.param("mcp", marks=_SCAD_MCP_XFAIL),
+        pytest.param("scad", marks=_SCAD_MCP_XFAIL),
+    ],
+)
 def test_path_matches_crrp_to_1e_3(name, cov_cols, event_col, penalty):
     fixture = FIXTURES_DIR / f"crrp_{name}_{penalty}_fit.csv"
     if not fixture.exists():
@@ -206,6 +231,150 @@ def test_path_matches_crrp_to_1e_3(name, cov_cols, event_col, penalty):
     order = np.argsort(m.lambdas_)[::-1]  # align to crrp's descending grid
     np.testing.assert_allclose(m.coef_path_[:, order], beta_ref, atol=1e-3)
     np.testing.assert_allclose(m.se_path_[:, order], se_ref, atol=1e-3)
+
+
+# ---------------------------------------------------------------------------
+# R `fastcmprsk` regression (independent oracle: cumsum-based linear-time
+# implementation, Kawaguchi et al. 2021).
+#
+# LASSO: fastcmprsk == crrp to ~3e-14 (direct R-side check) and the
+# crforest LASSO prox was always correct for general v, so this stays a
+# real gate.
+#
+# MCP / SCAD: fastcmprsk == crrp to ~3e-14 on MCP (LASSO and MCP share
+# the Eq.(2.6) v=1 form via the same library lineage); fastcmprsk
+# diverges from crrp on SCAD by up to 0.5 in beta -- root cause not
+# fully traced, but BOTH disagree with crforest after the Eq.(3.7)
+# patch because BOTH use the v=1 prox arms. Correctness for SCAD/MCP
+# is gated by test_objective_dominates_crrp below.
+# Fastcmprsk does not emit SE along the penalised path, so this test
+# gates beta only; SE stays gated against crrp / cmprsk in the
+# unpenalised tests above.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name, cov_cols, event_col", _CRRP_CASES)
+@pytest.mark.parametrize(
+    "penalty",
+    [
+        "lasso",
+        pytest.param("mcp", marks=_SCAD_MCP_XFAIL),
+        pytest.param("scad", marks=_SCAD_MCP_XFAIL),
+    ],
+)
+def test_path_matches_fastcmprsk_to_1e_3(name, cov_cols, event_col, penalty):
+    fixture = FIXTURES_DIR / f"fastcmprsk_{name}_{penalty}_fit.csv"
+    if not fixture.exists():
+        pytest.skip(f"{fixture.name} missing; run Rscript tests/cross_check_fastcmprsk.R")
+    ref = pd.read_csv(fixture)
+    lambdas = ref["lambda"].drop_duplicates().to_numpy()
+    n_lambda, p = lambdas.shape[0], len(cov_cols)
+    beta_ref = ref["coef"].to_numpy().reshape(n_lambda, p).T
+
+    data = pd.read_csv(FIXTURES_DIR / f"cmprsk_{name}_data.csv")
+    x = data[cov_cols].to_numpy(dtype=float)
+    time = data["time"].to_numpy(dtype=float)
+    event = data[event_col].to_numpy(dtype=int)
+
+    m = PenalizedFineGrayRegression(penalty=penalty, lambdas=lambdas, max_iter=5000, tol=1e-7).fit(
+        x, time=time, event=event
+    )
+    order = np.argsort(m.lambdas_)[::-1]  # fastcmprsk's grid is descending
+    np.testing.assert_allclose(m.coef_path_[:, order], beta_ref, atol=1e-3)
+
+
+# ---------------------------------------------------------------------------
+# Positive correctness gate for SCAD / MCP: crforest's coefficient path must
+# achieve a no-worse penalised-objective value at every lambda than the
+# crrp fixture at the same lambda. The Eq.(3.7) patch was motivated by the
+# observation that crrp / fastcmprsk converge to non-stationary points of
+# their claimed objective when v != 1; this test makes the implicit ordering
+# explicit. Replaces the (now xfailed) coefficient-match gate as the
+# load-bearing correctness check for SCAD and MCP.
+# ---------------------------------------------------------------------------
+
+
+def _scad_pen_val(beta: float, lam: float, gamma: float) -> float:
+    t = abs(beta)
+    if t <= lam:
+        return lam * t
+    if t <= gamma * lam:
+        return -(t * t - 2.0 * gamma * lam * t + lam * lam) / (2.0 * (gamma - 1.0))
+    return lam * lam * (gamma + 1.0) / 2.0
+
+
+def _mcp_pen_val(beta: float, lam: float, gamma: float) -> float:
+    t = abs(beta)
+    if t <= gamma * lam:
+        return lam * t - t * t / (2.0 * gamma)
+    return gamma * lam * lam / 2.0
+
+
+def _penalised_objective(beta_vec, x_std, time, event, lam, penalty, gamma):
+    from comprisk.fine_gray import _build_event_time_grid, _km_censoring_left_limit
+    from comprisk.penalized_fine_gray import _psh_working
+
+    n = len(time)
+    eta = x_std @ beta_vec
+    event_times = _build_event_time_grid(time, event, cause=1)
+    cg = np.zeros(n, dtype=np.int64)
+    g_evt = _km_censoring_left_limit(time, event, cg, event_times)
+    g_subj = _km_censoring_left_limit(time, event, cg, time)[:, 0]
+    res = _psh_working(eta, time, event, cg, 1, 1, event_times, g_evt, g_subj)
+    pen = _scad_pen_val if penalty == "scad" else _mcp_pen_val
+    return -float(res[2]) / n + sum(pen(b, lam, gamma) for b in beta_vec)
+
+
+@pytest.mark.parametrize("name, cov_cols, event_col", _CRRP_CASES)
+@pytest.mark.parametrize("penalty", ["mcp", "scad"])
+def test_objective_dominates_crrp(name, cov_cols, event_col, penalty):
+    """At every lambda crrp emits, crforest's β must give an objective <=
+    crrp's β + a tiny float-noise tolerance. Strict dominance at most
+    lambdas (Eq.(3.7) finds genuinely better stationary points)."""
+    fixture = FIXTURES_DIR / f"crrp_{name}_{penalty}_fit.csv"
+    if not fixture.exists():
+        pytest.skip(f"{fixture.name} missing")
+    ref = pd.read_csv(fixture)
+    lambdas = ref["lambda"].drop_duplicates().to_numpy()
+    p = len(cov_cols)
+    crrp_beta = ref["coef"].to_numpy().reshape(len(lambdas), p).T
+
+    data = pd.read_csv(FIXTURES_DIR / f"cmprsk_{name}_data.csv")
+    x = data[cov_cols].to_numpy(dtype=float)
+    time = data["time"].to_numpy(dtype=float)
+    event = data[event_col].to_numpy(dtype=int)
+    x_std = (x - x.mean(0)) / x.std(0, ddof=0)
+
+    gamma = 3.7 if penalty == "scad" else 2.7
+    m = PenalizedFineGrayRegression(
+        penalty=penalty,
+        lambdas=lambdas,
+        gamma=gamma,
+        standardize=False,
+        max_iter=20000,
+        tol=1e-10,
+    ).fit(x_std, time=time, event=event)
+    order = np.argsort(m.lambdas_)[::-1]
+    cf_beta = m.coef_path_[:, order]
+
+    wins = ties = 0
+    for i, lam in enumerate(lambdas):
+        f_crrp = _penalised_objective(crrp_beta[:, i], x_std, time, event, lam, penalty, gamma)
+        f_cf = _penalised_objective(cf_beta[:, i], x_std, time, event, lam, penalty, gamma)
+        assert f_cf <= f_crrp + 1e-9, (
+            f"crforest's β at lambda={lam} has worse objective "
+            f"(f={f_cf:.6f}) than crrp's β (f={f_crrp:.6f}), Δ={f_cf - f_crrp:+.2e}"
+        )
+        if f_cf < f_crrp - 1e-9:
+            wins += 1
+        else:
+            ties += 1
+    # Strict dominance at the bulk of lambdas, not just ties everywhere
+    # (would indicate the patch didn't take effect).
+    assert wins >= 0.5 * len(lambdas), (
+        f"crforest only strictly beat crrp at {wins}/{len(lambdas)} lambdas; "
+        f"expected the Eq.(3.7) patch to dominate at >= half."
+    )
 
 
 # ---------------------------------------------------------------------------
